@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+
+{% block title %}Live Gameweek Tracker{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-block">
+            <div class="brand-mark">F</div>
+            <div>
+                <h1>FPL Nepal</h1>
+                <p>Webapp</p>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <p class="nav-label">Main</p>
+            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
+            <a href="{% url 'fantasy:home' %}#top-picks">Players</a>
+            <a href="{% url 'fantasy:home' %}#fixtures">Compare</a>
+            <a href="{% url 'fantasy:home' %}#standings">History</a>
+            <p class="nav-label">FPL Nepal</p>
+            <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
+            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
+            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
+            <a class="{% if active_page == 'the_chase' %}active{% endif %}" href="{% url 'fantasy:the_chase' %}">The Chase</a>
+            <a href="/control-center/">Admin Portal</a>
+        </nav>
+    </aside>
+
+    <div class="main-panel">
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+            <h2>Fantasy Premier League Nepal</h2>
+            <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to my team</a>
+        </header>
+
+        <main id="main-content" class="main-content">
+            <section class="team-hero reveal">
+                <div>
+                    <p class="kicker">{{ gameweek_name }}</p>
+                    <h3>Live tracker</h3>
+                </div>
+                <span class="chip">Deadline {{ deadline_display }}</span>
+            </section>
+
+            <section class="status-grid">
+                <article class="tracker-card reveal tracker-card--wide">
+                    <h4>See your live gameweek</h4>
+                    <p>Enter your FPL ID to track points, rank and active players in real time.</p>
+                    <form class="tracker-form" method="get" action="{% url 'fantasy:live_gameweek' %}">
+                        <label for="entry-id">Your FPL ID</label>
+                        <input id="entry-id" type="text" name="entry_id" value="{{ entry_id }}" inputmode="numeric" pattern="[0-9]+" placeholder="e.g. 1234567" required>
+                        <button type="submit">See my team</button>
+                    </form>
+
+                    <p class="tracker-divider">or fetch a player history by player ID</p>
+                    <form class="tracker-form" method="get" action="{% url 'fantasy:live_gameweek' %}">
+                        {% if entry_id %}
+                        <input type="hidden" name="entry_id" value="{{ entry_id }}">
+                        {% endif %}
+                        <label for="player-id">Player ID</label>
+                        <input id="player-id" type="text" name="player_id" value="{{ player_id }}" inputmode="numeric" pattern="[0-9]+" placeholder="e.g. 355" required>
+                        <button type="submit">Show player history</button>
+                    </form>
+                    {% if saved_message %}
+                    <p class="save-note">{{ saved_message }}</p>
+                    {% endif %}
+                    {% if error_message %}
+                    <p class="inline-error">{{ error_message }}</p>
+                    {% endif %}
+                    {% if entry_history_error %}
+                    <p class="inline-error">{{ entry_history_error }}</p>
+                    {% endif %}
+                    {% if player_error %}
+                    <p class="inline-error">{{ player_error }}</p>
+                    {% endif %}
+                </article>
+
+                <article class="season-card reveal">
+                    <div class="ball-icon">O</div>
+                    <h4>{{ season_message }}</h4>
+                    <p>Countdown is synced to gameweek deadline and updates every second.</p>
+                    <div class="countdown" data-target="{{ deadline_iso }}">
+                        <div><strong data-count="days">00</strong><span>Days</span></div>
+                        <div><strong data-count="hours">00</strong><span>Hrs</span></div>
+                        <div><strong data-count="minutes">00</strong><span>Min</span></div>
+                        <div><strong data-count="seconds">00</strong><span>Sec</span></div>
+                    </div>
+                </article>
+            </section>
+
+            {% if live_data %}
+            <section class="insight-grid">
+                <article class="card reveal">
+                    <header class="card-header">
+                        <h4>{{ live_data.team_name }}</h4>
+                        <span>ID {{ live_data.entry_id }}</span>
+                    </header>
+                    <div class="manager-meta">
+                        <p><strong>Manager:</strong> {{ live_data.manager_name }}</p>
+                        <p><strong>Current GW:</strong> {{ live_data.current_gameweek }}</p>
+                        <p><strong>GW Points:</strong> {{ live_data.event_points }}</p>
+                        <p><strong>Overall Points:</strong> {{ live_data.overall_points }}</p>
+                        <p><strong>Overall Rank:</strong> {{ live_data.overall_rank }}</p>
+                    </div>
+                </article>
+
+                <article class="card reveal">
+                    <header class="card-header">
+                        <h4>Current Squad</h4>
+                        <span>Live picks</span>
+                    </header>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Role</th>
+                                    <th>xPts</th>
+                                    <th>Tag</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pick in live_data.picks %}
+                                <tr>
+                                    <td>
+                                        <a class="pick-link" href="{% url 'fantasy:live_gameweek' %}?entry_id={{ live_data.entry_id }}&player_id={{ pick.player_id }}">{{ pick.name }}</a>
+                                    </td>
+                                    <td>{{ pick.position }}</td>
+                                    <td>x{{ pick.multiplier }}</td>
+                                    <td>{{ pick.captain_tag|default:'-' }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4">No picks available for this gameweek yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+            {% endif %}
+
+            {% if entry_history %}
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>FPL ID History</h4>
+                    <span>Last 12 gameweeks</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>GW</th>
+                                <th>GW Pts</th>
+                                <th>Total Pts</th>
+                                <th>GW Rank</th>
+                                <th>Overall Rank</th>
+                                <th>Transfers</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in entry_history.current_rows %}
+                            <tr>
+                                <td>{{ row.event }}</td>
+                                <td>{{ row.points }}</td>
+                                <td>{{ row.total_points }}</td>
+                                <td>{{ row.rank }}</td>
+                                <td>{{ row.overall_rank }}</td>
+                                <td>{{ row.event_transfers }}</td>
+                                <td>{{ row.event_transfers_cost }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7">No gameweek history available yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="insight-grid">
+                <article class="card reveal">
+                    <header class="card-header">
+                        <h4>Past Seasons</h4>
+                        <span>Manager progression</span>
+                    </header>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Season</th>
+                                    <th>Points</th>
+                                    <th>Rank</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in entry_history.past_rows %}
+                                <tr>
+                                    <td>{{ row.season_name }}</td>
+                                    <td>{{ row.total_points }}</td>
+                                    <td>{{ row.rank }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3">No past season data available yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="card reveal">
+                    <header class="card-header">
+                        <h4>Chips Used</h4>
+                        <span>By gameweek</span>
+                    </header>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Chip</th>
+                                    <th>GW</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for chip in entry_history.chips %}
+                                <tr>
+                                    <td>{{ chip.name }}</td>
+                                    <td>{{ chip.event }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="2">No chip usage recorded yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+            {% endif %}
+
+            {% if player_history %}
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>{{ player_history.player_name }} History</h4>
+                    <span>ID {{ player_history.player_id }} | {{ player_history.team_name }} | {{ player_history.position }}</span>
+                </header>
+                <div class="manager-meta">
+                    <p><strong>Full Name:</strong> {{ player_history.full_name }}</p>
+                    <p><strong>Current Price:</strong> {{ player_history.current_price }}</p>
+                    <p><strong>Selected By:</strong> {{ player_history.selected_by }}%</p>
+                </div>
+            </section>
+
+            <section class="insight-grid">
+                <article class="card reveal">
+                    <header class="card-header">
+                        <h4>Recent GW History</h4>
+                        <span>Last 12 matches</span>
+                    </header>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>GW</th>
+                                    <th>Min</th>
+                                    <th>G</th>
+                                    <th>A</th>
+                                    <th>CS</th>
+                                    <th>Pts</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in player_history.history_rows %}
+                                <tr>
+                                    <td>{{ row.gameweek }}</td>
+                                    <td>{{ row.minutes }}</td>
+                                    <td>{{ row.goals_scored }}</td>
+                                    <td>{{ row.assists }}</td>
+                                    <td>{{ row.clean_sheets }}</td>
+                                    <td>{{ row.total_points }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6">No recent history available yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="card reveal">
+                    <header class="card-header">
+                        <h4>Upcoming Fixtures</h4>
+                        <span>Next 5</span>
+                    </header>
+                    <ul class="fixtures-list">
+                        {% for fixture in player_history.upcoming_fixtures %}
+                        <li>
+                            <div>
+                                <p>GW {{ fixture.gameweek }} vs {{ fixture.opponent }}</p>
+                                <small>{% if fixture.is_home %}Home{% else %}Away{% endif %}</small>
+                            </div>
+                            <span class="difficulty difficulty-{{ fixture.difficulty|default:'3' }}">D{{ fixture.difficulty|default:'-' }}</span>
+                        </li>
+                        {% empty %}
+                        <li>
+                            <div>
+                                <p>No upcoming fixture data</p>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </article>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Past Seasons</h4>
+                    <span>Career summary</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Season</th>
+                                <th>Points</th>
+                                <th>Goals</th>
+                                <th>Assists</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for season in player_history.past_seasons %}
+                            <tr>
+                                <td>{{ season.season_name }}</td>
+                                <td>{{ season.total_points }}</td>
+                                <td>{{ season.goals_scored }}</td>
+                                <td>{{ season.assists }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No past season records available yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}

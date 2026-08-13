@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Manager Of The Month{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-block">
+            <div class="brand-mark">F</div>
+            <div>
+                <h1>FPL Nepal</h1>
+                <p>Webapp</p>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <p class="nav-label">Main</p>
+            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
+                <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+                <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
+            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
+            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
+            <a class="{% if active_page == 'the_chase' %}active{% endif %}" href="{% url 'fantasy:the_chase' %}">The Chase</a>
+            <a href="/control-center/">Admin Portal</a>
+        </nav>
+    </aside>
+
+    <div class="main-panel">
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+            <h2>Fantasy Premier League Nepal</h2>
+            <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to dashboard</a>
+        </header>
+
+        <main id="main-content" class="main-content" data-league-page="monthly" data-live-endpoint="{% url 'fantasy:league_live_data' %}">
+            <section class="team-hero reveal">
+                <div>
+                    <p class="kicker">Monthly Awards</p>
+                    <h3>Manager Of The Month</h3>
+                </div>
+                <span class="chip" data-monthly-winner-chip>{% if monthly_winner %}Winner {{ monthly_winner.manager_name }}{% else %}No winner yet{% endif %}</span>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4 data-league-name>{{ league_name }}</h4>
+                    <span data-source-badge>{% if league_source == 'live' %}Live FPL code 6232{% elif league_source == 'local' %}Local fallback data{% else %}No data source{% endif %}</span>
+                </header>
+                <p class="inline-error {% if not league_error %}is-hidden{% endif %}" data-league-error>{{ league_error|default:'' }}</p>
+            </section>
+
+            <section class="card reveal" data-monthly-spotlight>
+                <header class="card-header">
+                    <h4>Winner Spotlight</h4>
+                    <span>Weighted monthly score</span>
+                </header>
+                <div class="leader-row">
+                    <div>
+                        <strong data-monthly-winner-name>{% if monthly_winner %}{{ monthly_winner.manager_name }}{% else %}No winner yet{% endif %}</strong>
+                        <p data-monthly-winner-team>{% if monthly_winner %}{{ monthly_winner.team_name }}{% else %}-{% endif %}</p>
+                    </div>
+                    <div class="score-cell">
+                        <strong data-monthly-winner-score>{% if monthly_winner %}{{ monthly_winner.monthly_score }}{% else %}0{% endif %}</strong>
+                        <span>Monthly score</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Monthly Ranking</h4>
+                    <span>Formula: GW points x 3 + total/10</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody data-monthly-rows>
+                            {% for item in monthly_rankings %}
+                            <tr>
+                                <td>#{{ item.rank }}</td>
+                                <td>{{ item.manager_name }}</td>
+                                <td>{{ item.team_name }}</td>
+                                <td>{{ item.monthly_score }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No rankings available yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+{% endblock %}

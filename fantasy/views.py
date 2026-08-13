@@ -1,0 +1,788 @@
+import json
+from datetime import datetime
+from urllib import error, request
+
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.utils import timezone
+
+
+FPL_CLASSIC_LEAGUE_ID = 6232
+
+
+def _get_json(url: str) -> dict:
+	with request.urlopen(url, timeout=8) as response:
+		return json.loads(response.read().decode('utf-8'))
+
+
+def _photo_url_from_code(code: int | str | None) -> str:
+	if not code:
+		return ''
+	return f'https://resources.premierleague.com/premierleague/photos/players/250x250/p{code}.png'
+
+
+def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
+	base_url = 'https://fantasy.premierleague.com/api'
+	try:
+		entry = _get_json(f'{base_url}/entry/{entry_id}/')
+		bootstrap = _get_json(f'{base_url}/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		current_event = next((event for event in events if event.get('is_current')), None)
+		next_event = next((event for event in events if event.get('is_next')), None)
+		target_event = current_event or next_event
+		if not target_event:
+			return None, 'Could not determine gameweek from FPL API.'
+
+		current_gameweek = target_event.get('id')
+		picks = {'picks': []}
+		try:
+			picks = _get_json(f'{base_url}/entry/{entry_id}/event/{current_gameweek}/picks/')
+		except error.HTTPError:
+			# Some entries have no published picks for upcoming gameweek yet.
+			picks = {'picks': []}
+		except (error.URLError, TimeoutError, ValueError, KeyError, TypeError):
+			picks = {'picks': []}
+		element_lookup = {element['id']: element for element in bootstrap.get('elements', [])}
+		position_lookup = {
+			1: 'GK',
+			2: 'DEF',
+			3: 'MID',
+			4: 'FWD',
+		}
+
+		team_picks = []
+		for pick in picks.get('picks', []):
+			element = element_lookup.get(pick.get('element'))
+			if not element:
+				continue
+			captain_tag = 'C' if pick.get('is_captain') else 'VC' if pick.get('is_vice_captain') else ''
+			team_picks.append(
+				{
+					'name': element.get('web_name', 'Unknown'),
+					'player_id': element.get('id'),
+					'position': position_lookup.get(element.get('element_type'), '-'),
+					'multiplier': pick.get('multiplier', 1),
+					'captain_tag': captain_tag,
+				}
+			)
+
+		data = {
+			'entry_id': entry_id,
+			'manager_name': f"{entry.get('player_first_name', '')} {entry.get('player_last_name', '')}".strip() or 'FPL Manager',
+			'team_name': entry.get('name', 'Unknown Team'),
+			'overall_points': entry.get('summary_overall_points', 0),
+			'overall_rank': entry.get('summary_overall_rank', 0),
+			'event_points': entry.get('summary_event_points', 0),
+			'current_gameweek': current_gameweek,
+			'picks': team_picks,
+		}
+		return data, None
+	except error.HTTPError as exc:
+		if exc.code == 404:
+			return None, 'No FPL account found for this ID. Please check and try again.'
+		return None, f'FPL API returned an error ({exc.code}). Please try again shortly.'
+	except (error.URLError, TimeoutError):
+		return None, 'Could not reach FPL API right now. Please try again in a moment.'
+	except (ValueError, KeyError, TypeError):
+		return None, 'Unexpected API response received. Please try again.'
+
+
+def _fetch_player_history(player_id: int) -> tuple[dict | None, str | None]:
+	base_url = 'https://fantasy.premierleague.com/api'
+	try:
+		bootstrap = _get_json(f'{base_url}/bootstrap-static/')
+		element_lookup = {element['id']: element for element in bootstrap.get('elements', [])}
+		team_lookup = {team['id']: team for team in bootstrap.get('teams', [])}
+		element = element_lookup.get(player_id)
+		if not element:
+			return None, 'Player ID not found in FPL data.'
+
+		summary = _get_json(f'{base_url}/element-summary/{player_id}/')
+		team_name = team_lookup.get(element.get('team'), {}).get('name', 'Unknown Team')
+		position_lookup = {
+			1: 'Goalkeeper',
+			2: 'Defender',
+			3: 'Midfielder',
+			4: 'Forward',
+		}
+
+		history_rows = []
+		for row in summary.get('history', [])[-12:]:
+			history_rows.append(
+				{
+					'gameweek': row.get('round'),
+					'opponent_team': row.get('opponent_team'),
+					'minutes': row.get('minutes', 0),
+					'goals_scored': row.get('goals_scored', 0),
+					'assists': row.get('assists', 0),
+					'clean_sheets': row.get('clean_sheets', 0),
+					'total_points': row.get('total_points', 0),
+				}
+			)
+
+		past_seasons = []
+		for season in summary.get('history_past', []):
+			past_seasons.append(
+				{
+					'season_name': season.get('season_name', '-'),
+					'total_points': season.get('total_points', 0),
+					'goals_scored': season.get('goals_scored', 0),
+					'assists': season.get('assists', 0),
+				}
+			)
+
+		upcoming_fixtures = []
+		for fixture in summary.get('fixtures', [])[:5]:
+			is_home = fixture.get('is_home')
+			opponent_id = fixture.get('team_a') if is_home else fixture.get('team_h')
+			opponent_name = team_lookup.get(opponent_id, {}).get('short_name', 'TBD')
+			upcoming_fixtures.append(
+				{
+					'gameweek': fixture.get('event'),
+					'opponent': opponent_name,
+					'is_home': is_home,
+					'difficulty': fixture.get('difficulty'),
+				}
+			)
+
+		payload = {
+			'player_id': player_id,
+			'player_name': element.get('web_name', 'Unknown Player'),
+			'full_name': f"{element.get('first_name', '')} {element.get('second_name', '')}".strip(),
+			'team_name': team_name,
+			'position': position_lookup.get(element.get('element_type'), '-'),
+			'current_price': (element.get('now_cost', 0) / 10),
+			'selected_by': element.get('selected_by_percent', '0'),
+			'history_rows': history_rows,
+			'past_seasons': past_seasons,
+			'upcoming_fixtures': upcoming_fixtures,
+		}
+		return payload, None
+	except error.HTTPError as exc:
+		if exc.code == 404:
+			return None, 'No history found for this player ID.'
+		return None, f'FPL API error while fetching player history ({exc.code}).'
+	except (error.URLError, TimeoutError):
+		return None, 'Could not reach FPL API for player history right now.'
+	except (ValueError, KeyError, TypeError):
+		return None, 'Unexpected data format received for player history.'
+
+
+def _fetch_entry_history(entry_id: int) -> tuple[dict | None, str | None]:
+	base_url = 'https://fantasy.premierleague.com/api'
+	try:
+		payload = _get_json(f'{base_url}/entry/{entry_id}/history/')
+		current_rows = []
+		for row in payload.get('current', [])[-12:]:
+			current_rows.append(
+				{
+					'event': row.get('event'),
+					'points': row.get('points', 0),
+					'total_points': row.get('total_points', 0),
+					'overall_rank': row.get('overall_rank', 0),
+					'rank': row.get('rank', 0),
+					'event_transfers': row.get('event_transfers', 0),
+					'event_transfers_cost': row.get('event_transfers_cost', 0),
+				}
+			)
+
+		past_rows = []
+		for row in payload.get('past', []):
+			past_rows.append(
+				{
+					'season_name': row.get('season_name', '-'),
+					'total_points': row.get('total_points', 0),
+					'rank': row.get('rank', 0),
+				}
+			)
+
+		chips = []
+		for row in payload.get('chips', []):
+			chips.append(
+				{
+					'name': row.get('name', '-'),
+					'event': row.get('event', 0),
+				}
+			)
+
+		return {
+			'current_rows': current_rows,
+			'past_rows': past_rows,
+			'chips': chips,
+		}, None
+	except error.HTTPError as exc:
+		if exc.code == 404:
+			return None, 'No history found for this FPL ID.'
+		return None, f'FPL API error while fetching FPL ID history ({exc.code}).'
+	except (error.URLError, TimeoutError):
+		return None, 'Could not reach FPL API for FPL ID history right now.'
+	except (ValueError, KeyError, TypeError):
+		return None, 'Unexpected data format received for FPL ID history.'
+
+
+def _to_float(value, default: float = 0.0) -> float:
+	try:
+		return float(value)
+	except (TypeError, ValueError):
+		return default
+
+
+def _to_int(value, default: int = 0) -> int:
+	try:
+		return int(value)
+	except (TypeError, ValueError):
+		return default
+
+
+def _build_captain_recommendations(entry_id: int) -> tuple[dict | None, str | None]:
+	live_data, live_error = _fetch_fpl_live_data(entry_id)
+	if live_error or not live_data:
+		return None, live_error or 'Could not load team data for captain mode.'
+
+	picks = live_data.get('picks', [])
+	if not picks:
+		return None, 'No squad picks available yet for this gameweek.'
+
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return None, 'Could not load FPL stats required for captain recommendations.'
+
+	element_lookup = {element['id']: element for element in bootstrap.get('elements', [])}
+
+	scored_rows = []
+	for pick in picks:
+		element = element_lookup.get(pick.get('player_id'))
+		if not element:
+			continue
+
+		form = _to_float(element.get('form'))
+		points_per_game = _to_float(element.get('points_per_game'))
+		ict_index = _to_float(element.get('ict_index'))
+		selected_by = _to_float(element.get('selected_by_percent'))
+		goals = _to_int(element.get('goals_scored'))
+		assists = _to_int(element.get('assists'))
+		clean_sheets = _to_int(element.get('clean_sheets'))
+		minutes = _to_int(element.get('minutes'))
+		availability = element.get('chance_of_playing_next_round')
+		availability_score = 1.0 if availability is None else max(0.0, min(1.0, _to_float(availability) / 100.0))
+
+		position = pick.get('position', '-')
+		position_bonus_map = {
+			'FWD': 1.4,
+			'MID': 1.1,
+			'DEF': 0.55,
+			'GK': 0.35,
+		}
+		position_bonus = position_bonus_map.get(position, 0.2)
+		minutes_score = min(1.0, minutes / 900.0) * 2.2
+
+		captain_score = (
+			(form * 4.1)
+			+ (points_per_game * 2.9)
+			+ (ict_index * 0.19)
+			+ (goals * 0.26)
+			+ (assists * 0.2)
+			+ (clean_sheets * (0.12 if position in {'DEF', 'GK'} else 0.03))
+			+ (selected_by * 0.05)
+			+ minutes_score
+			+ position_bonus
+		)
+		captain_score *= availability_score
+
+		reason_bits = [
+			f'Form {form:.1f}',
+			f'PPG {points_per_game:.1f}',
+			f'ICT {ict_index:.1f}',
+		]
+		if goals:
+			reason_bits.append(f'Goals {goals}')
+		if assists:
+			reason_bits.append(f'Assists {assists}')
+		if availability is not None and _to_int(availability) < 100:
+			reason_bits.append(f'Availability {availability}%')
+
+		scored_rows.append(
+			{
+				'name': pick.get('name', 'Unknown'),
+				'player_id': pick.get('player_id'),
+				'position': position,
+				'captain_tag': pick.get('captain_tag') or '-',
+				'form': round(form, 2),
+				'points_per_game': round(points_per_game, 2),
+				'ict_index': round(ict_index, 2),
+				'selected_by': round(selected_by, 2),
+				'availability': availability if availability is not None else 100,
+				'captain_score': round(captain_score, 2),
+				'reason': ' | '.join(reason_bits),
+			}
+		)
+
+	if not scored_rows:
+		return None, 'No valid players were found to score for captain mode.'
+
+	scored_rows.sort(key=lambda row: row['captain_score'], reverse=True)
+	captain_pick = scored_rows[0]
+	vice_pick = scored_rows[1] if len(scored_rows) > 1 else None
+
+	return {
+		'live_data': live_data,
+		'captain_pick': captain_pick,
+		'vice_pick': vice_pick,
+		'top_rows': scored_rows[:8],
+	}, None
+
+
+def _fetch_dashboard_data() -> dict:
+	position_lookup = {
+		1: 'Goalkeeper',
+		2: 'Defender',
+		3: 'Midfielder',
+		4: 'Forward',
+	}
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		fixture_rows = _get_json('https://fantasy.premierleague.com/api/fixtures/?future=1')
+		elements = bootstrap.get('elements', [])
+		teams = bootstrap.get('teams', [])
+		team_lookup = {team['id']: team for team in teams}
+
+		sorted_by_selected = sorted(
+			elements,
+			key=lambda row: (_to_float(row.get('selected_by_percent')), _to_int(row.get('total_points'))),
+			reverse=True,
+		)
+		top_players = []
+		for element in sorted_by_selected[:5]:
+			team = team_lookup.get(element.get('team'), {})
+			top_players.append(
+				{
+					'name': element.get('web_name', 'Unknown'),
+					'team_short_name': team.get('short_name', '-'),
+					'position_label': position_lookup.get(element.get('element_type'), '-'),
+					'price': _to_int(element.get('now_cost')) / 10,
+					'total_points': _to_int(element.get('total_points')),
+					'selected_by_percent': element.get('selected_by_percent', '0'),
+				}
+			)
+
+		def stat_leader(sort_key: str, position_types: set[int] | None = None) -> dict | None:
+			eligible = elements
+			if position_types is not None:
+				eligible = [element for element in elements if element.get('element_type') in position_types]
+			if not eligible:
+				return None
+			leader = max(eligible, key=lambda row: (_to_int(row.get(sort_key)), _to_int(row.get('total_points'))))
+			return {
+				'name': leader.get('web_name', 'Unknown'),
+				'goals': _to_int(leader.get('goals_scored')),
+				'assists': _to_int(leader.get('assists')),
+				'clean_sheets': _to_int(leader.get('clean_sheets')),
+				'photo_url': _photo_url_from_code(leader.get('code')),
+			}
+
+		top_scorer = stat_leader('goals_scored')
+		top_assister = stat_leader('assists')
+		top_clean_sheet = stat_leader('clean_sheets', {1, 2})
+
+		upcoming_fixtures = []
+		for fixture in sorted(
+			[row for row in fixture_rows if row.get('kickoff_time') and not row.get('finished')],
+			key=lambda row: row.get('kickoff_time'),
+		)[:10]:
+			home_team = team_lookup.get(fixture.get('team_h'), {})
+			away_team = team_lookup.get(fixture.get('team_a'), {})
+			kickoff_iso = fixture.get('kickoff_time')
+			kickoff_display = '-'
+			if kickoff_iso:
+				kickoff_dt = datetime.fromisoformat(kickoff_iso.replace('Z', '+00:00'))
+				kickoff_display = timezone.localtime(kickoff_dt).strftime('%d %b, %H:%M')
+			upcoming_fixtures.append(
+				{
+					'home_team': {
+						'short_name': home_team.get('short_name', '-'),
+						'badge': home_team.get('short_name', 'H')[:1],
+					},
+					'away_team': {
+						'short_name': away_team.get('short_name', '-'),
+						'badge': away_team.get('short_name', 'A')[:1],
+					},
+					'kickoff_display': kickoff_display,
+					'gameweek': fixture.get('event') or '-',
+					'difficulty': max(_to_int(fixture.get('team_h_difficulty'), 3), _to_int(fixture.get('team_a_difficulty'), 3)),
+				}
+			)
+
+		return {
+			'top_players': top_players,
+			'top_scorer': top_scorer,
+			'top_assister': top_assister,
+			'top_clean_sheet': top_clean_sheet,
+			'fixtures': upcoming_fixtures[:4],
+			'live_fixtures': upcoming_fixtures,
+			'live_fixtures_label': f"GW {upcoming_fixtures[0]['gameweek']}" if upcoming_fixtures else 'Upcoming',
+			'teams_count': len(teams),
+			'players_count': len(elements),
+		}
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return {
+			'top_players': [],
+			'top_scorer': None,
+			'top_assister': None,
+			'top_clean_sheet': None,
+			'fixtures': [],
+			'live_fixtures': [],
+			'live_fixtures_label': 'Upcoming',
+			'teams_count': 0,
+			'players_count': 0,
+		}
+
+
+def _get_countdown_context() -> dict:
+	fallback_deadline = timezone.now() + timezone.timedelta(days=19, hours=11, minutes=34, seconds=52)
+	context = {
+		'gameweek_name': 'Gameweek 1',
+		'deadline_iso': fallback_deadline.isoformat(),
+		'deadline_display': fallback_deadline.strftime('%d/%m/%Y, %H:%M:%S'),
+		'season_message': "The season hasn't kicked off yet",
+	}
+
+	base_url = 'https://fantasy.premierleague.com/api'
+	try:
+		bootstrap = _get_json(f'{base_url}/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		current_event = next((event for event in events if event.get('is_current')), None)
+		next_event = next((event for event in events if event.get('is_next')), None)
+		target_event = current_event or next_event or (events[0] if events else None)
+
+		if target_event:
+			context['gameweek_name'] = f"Gameweek {target_event.get('id', 1)}"
+			deadline_time = target_event.get('deadline_time')
+			if deadline_time:
+				parsed_deadline = datetime.fromisoformat(deadline_time.replace('Z', '+00:00'))
+				local_deadline = timezone.localtime(parsed_deadline)
+				context['deadline_iso'] = local_deadline.isoformat()
+				context['deadline_display'] = local_deadline.strftime('%d/%m/%Y, %H:%M:%S')
+
+		if current_event:
+			context['season_message'] = 'Live gameweek is active right now'
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		pass
+
+	return context
+
+
+def _base_page_context(active_page: str) -> dict:
+	countdown = _get_countdown_context()
+	return {
+		'active_page': active_page,
+		'gameweek_name': countdown['gameweek_name'],
+		'deadline_iso': countdown['deadline_iso'],
+		'deadline_display': countdown['deadline_display'],
+		'season_message': countdown['season_message'],
+	}
+
+
+def _fetch_fpl_league_entries(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
+	url = f'https://fantasy.premierleague.com/api/leagues-classic/{league_id}/standings/?page_new_entries=1&page_standings=1'
+	try:
+		payload = _get_json(url)
+		league_name = payload.get('league', {}).get('name', f'FPL League {league_id}')
+		standings = payload.get('standings', {}).get('results', [])
+		rows = []
+
+		for index, item in enumerate(standings, start=1):
+			manager_name = item.get('player_name', '').strip() or 'Unknown Manager'
+			rows.append(
+				{
+					'rank': item.get('rank') or index,
+					'manager_name': manager_name,
+					'team_name': item.get('entry_name', 'Unknown Team'),
+					'total_points': item.get('total', 0),
+					'gameweek_points': item.get('event_total', 0),
+				}
+			)
+
+		if rows:
+			return rows, league_name, None
+
+		new_entries = payload.get('new_entries', {}).get('results', [])
+		for index, item in enumerate(new_entries, start=1):
+			full_name = f"{item.get('player_first_name', '')} {item.get('player_last_name', '')}".strip()
+			rows.append(
+				{
+					'rank': index,
+					'manager_name': full_name or 'New Manager',
+					'team_name': item.get('entry_name', 'Unknown Team'),
+					'total_points': 0,
+					'gameweek_points': 0,
+				}
+			)
+
+		message = None if rows else 'League fetched, but no members were returned yet.'
+		return rows, league_name, message
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return [], f'FPL League {league_id}', 'Live league data unavailable. Showing local data.'
+
+
+def _resolved_league_dataset() -> tuple[list[dict], str, str | None, str]:
+	live_rows, league_name, live_error = _fetch_fpl_league_entries()
+	if live_rows:
+		return live_rows, league_name, live_error, 'live'
+
+	return [], league_name, live_error or 'No league data available.', 'none'
+
+
+def _build_gameweek_data(rows: list[dict]) -> dict:
+	entries = sorted(rows, key=lambda row: row['gameweek_points'], reverse=True)[:10]
+	winner = entries[0] if entries else None
+	return {
+		'entries': entries,
+		'winner': winner,
+	}
+
+
+def _build_monthly_data(rows: list[dict]) -> dict:
+	scored_entries = []
+	for row in rows:
+		monthly_score = (row['gameweek_points'] * 3) + (row['total_points'] // 10)
+		scored_entries.append(
+			{
+				'manager_name': row['manager_name'],
+				'team_name': row['team_name'],
+				'monthly_score': monthly_score,
+			}
+		)
+
+	scored_entries.sort(key=lambda item: item['monthly_score'], reverse=True)
+	for index, item in enumerate(scored_entries, start=1):
+		item['rank'] = index
+
+	return {
+		'monthly_rankings': scored_entries[:10],
+		'monthly_winner': scored_entries[0] if scored_entries else None,
+	}
+
+
+def _build_chase_data(rows: list[dict]) -> dict:
+	sorted_rows = sorted(rows, key=lambda row: row['total_points'], reverse=True)
+	if sorted_rows:
+		safe_line_index = max(0, min(len(sorted_rows) - 1, len(sorted_rows) // 2 - 1))
+		safe_line_points = sorted_rows[safe_line_index]['total_points']
+	else:
+		safe_line_points = 0
+
+	chase_table = []
+	for row in sorted_rows:
+		gap = row['total_points'] - safe_line_points
+		status = 'Safe' if gap >= 0 else 'Chasing'
+		chase_table.append(
+			{
+				'rank': row['rank'],
+				'manager_name': row['manager_name'],
+				'total_points': row['total_points'],
+				'gap': gap,
+				'status': status,
+			}
+		)
+
+	return {
+		'safe_line_points': safe_line_points,
+		'chase_table': chase_table,
+	}
+
+
+def _build_classic_data(rows: list[dict]) -> dict:
+	sorted_rows = sorted(rows, key=lambda row: row['rank'])
+	leader_points = sorted_rows[0]['total_points'] if sorted_rows else 0
+	classic_rows = []
+	for row in sorted_rows:
+		gap = leader_points - row['total_points']
+		form = 'Hot' if row['gameweek_points'] >= 70 else 'Steady' if row['gameweek_points'] >= 60 else 'Cold'
+		classic_rows.append(
+			{
+				'rank': row['rank'],
+				'manager_name': row['manager_name'],
+				'team_name': row['team_name'],
+				'total_points': row['total_points'],
+				'gap_to_leader': gap,
+				'form': form,
+			}
+		)
+
+	return {
+		'leader_points': leader_points,
+		'classic_rows': classic_rows,
+	}
+
+
+def home(request):
+	base_context = _base_page_context('home')
+	dashboard_data = _fetch_dashboard_data()
+	rows, _, _, _ = _resolved_league_dataset()
+	context = {
+		**base_context,
+		**dashboard_data,
+		'standings': rows[:5],
+	}
+	return render(request, 'fantasy/home.html', context)
+
+
+def live_gameweek(request):
+	entry_id_raw = request.GET.get('entry_id', '').strip()
+	player_id_raw = request.GET.get('player_id', '').strip()
+	if not entry_id_raw:
+		entry_id_raw = str(request.session.get('fpl_entry_id', '')).strip()
+	base_context = _base_page_context('live_gameweek')
+	context = {
+		**base_context,
+		'entry_id': entry_id_raw,
+		'player_id': player_id_raw,
+		'live_data': None,
+		'entry_history': None,
+		'player_history': None,
+		'error_message': None,
+		'entry_history_error': None,
+		'player_error': None,
+		'saved_message': None,
+	}
+
+	if entry_id_raw:
+		if not entry_id_raw.isdigit():
+			context['error_message'] = 'FPL ID should contain numbers only.'
+		else:
+			entry_history, entry_history_error = _fetch_entry_history(int(entry_id_raw))
+			context['entry_history'] = entry_history
+			context['entry_history_error'] = entry_history_error
+
+			live_data, error_message = _fetch_fpl_live_data(int(entry_id_raw))
+			context['live_data'] = live_data
+			context['error_message'] = error_message
+			if live_data:
+				request.session['fpl_entry_id'] = int(entry_id_raw)
+				context['saved_message'] = 'Team added successfully. It will load automatically next time.'
+
+	if player_id_raw:
+		if not player_id_raw.isdigit():
+			context['player_error'] = 'Player ID should contain numbers only.'
+		else:
+			player_history, player_error = _fetch_player_history(int(player_id_raw))
+			context['player_history'] = player_history
+			context['player_error'] = player_error
+
+	return render(request, 'fantasy/live_gameweek.html', context)
+
+
+def captain_mode(request):
+	entry_id_raw = request.GET.get('entry_id', '').strip()
+	if not entry_id_raw:
+		entry_id_raw = str(request.session.get('fpl_entry_id', '')).strip()
+
+	base_context = _base_page_context('captain_mode')
+	context = {
+		**base_context,
+		'entry_id': entry_id_raw,
+		'captain_data': None,
+		'captain_error': None,
+		'saved_message': None,
+	}
+
+	if entry_id_raw:
+		if not entry_id_raw.isdigit():
+			context['captain_error'] = 'FPL ID should contain numbers only.'
+		else:
+			captain_data, captain_error = _build_captain_recommendations(int(entry_id_raw))
+			context['captain_data'] = captain_data
+			context['captain_error'] = captain_error
+			if captain_data:
+				request.session['fpl_entry_id'] = int(entry_id_raw)
+				context['saved_message'] = 'Captain mode loaded. This FPL ID is now saved for quick access.'
+
+	return render(request, 'fantasy/captain_mode.html', context)
+
+
+def gameweek_winners(request):
+	base_context = _base_page_context('gameweek_winners')
+	rows, league_name, league_error, league_source = _resolved_league_dataset()
+	gameweek_data = _build_gameweek_data(rows)
+	context = {
+		**base_context,
+		**gameweek_data,
+		'league_name': league_name,
+		'league_error': league_error,
+		'league_source': league_source,
+	}
+	return render(request, 'fantasy/gameweek_winners.html', context)
+
+
+def manager_of_the_month(request):
+	base_context = _base_page_context('manager_of_the_month')
+	rows, league_name, league_error, league_source = _resolved_league_dataset()
+	monthly_data = _build_monthly_data(rows)
+	context = {
+		**base_context,
+		**monthly_data,
+		'league_name': league_name,
+		'league_error': league_error,
+		'league_source': league_source,
+	}
+	return render(request, 'fantasy/manager_of_the_month.html', context)
+
+
+def the_chase(request):
+	base_context = _base_page_context('the_chase')
+	rows, league_name, league_error, league_source = _resolved_league_dataset()
+	chase_data = _build_chase_data(rows)
+	context = {
+		**base_context,
+		**chase_data,
+		'league_name': league_name,
+		'league_error': league_error,
+		'league_source': league_source,
+	}
+	return render(request, 'fantasy/the_chase.html', context)
+
+
+def classic_league(request):
+	base_context = _base_page_context('classic_league')
+	rows, league_name, league_error, league_source = _resolved_league_dataset()
+	classic_data = _build_classic_data(rows)
+	context = {
+		**base_context,
+		**classic_data,
+		'league_name': league_name,
+		'league_error': league_error,
+		'league_source': league_source,
+	}
+	return render(request, 'fantasy/classic_league.html', context)
+
+
+def league_live_data(request):
+	rows, league_name, league_error, league_source = _resolved_league_dataset()
+	classic_data = _build_classic_data(rows)
+	gameweek_data = _build_gameweek_data(rows)
+	monthly_data = _build_monthly_data(rows)
+	chase_data = _build_chase_data(rows)
+
+	response = {
+		'league_name': league_name,
+		'league_error': league_error,
+		'league_source': league_source,
+		'classic': {
+			'leader_points': classic_data['leader_points'],
+			'rows': classic_data['classic_rows'],
+		},
+		'gameweek': {
+			'winner': gameweek_data['winner'],
+			'entries': gameweek_data['entries'],
+		},
+		'monthly': {
+			'winner': monthly_data['monthly_winner'],
+			'rankings': monthly_data['monthly_rankings'],
+		},
+		'chase': {
+			'safe_line_points': chase_data['safe_line_points'],
+			'rows': chase_data['chase_table'],
+		},
+	}
+	return JsonResponse(response)

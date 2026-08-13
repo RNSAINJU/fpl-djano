@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Captain Mode{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-block">
+            <div class="brand-mark">F</div>
+            <div>
+                <h1>FPL Nepal</h1>
+                <p>Webapp</p>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <p class="nav-label">Main</p>
+            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
+            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+            <a href="{% url 'fantasy:home' %}#top-picks">Players</a>
+            <a href="{% url 'fantasy:home' %}#fixtures">Compare</a>
+            <a href="{% url 'fantasy:home' %}#standings">History</a>
+            <p class="nav-label">FPL Nepal</p>
+            <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
+            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
+            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
+            <a class="{% if active_page == 'the_chase' %}active{% endif %}" href="{% url 'fantasy:the_chase' %}">The Chase</a>
+            <a href="/control-center/">Admin Portal</a>
+        </nav>
+    </aside>
+
+    <div class="main-panel">
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+            <h2>Fantasy Premier League Nepal</h2>
+            <a class="topbar-button" href="{% url 'fantasy:live_gameweek' %}">Go to live tracker</a>
+        </header>
+
+        <main id="main-content" class="main-content">
+            <section class="team-hero reveal">
+                <div>
+                    <p class="kicker">Smart Pick Engine</p>
+                    <h3>Captain mode</h3>
+                </div>
+                <span class="chip">Deadline {{ deadline_display }}</span>
+            </section>
+
+            <section class="status-grid">
+                <article class="tracker-card reveal tracker-card--wide">
+                    <h4>Pick best captain from your squad</h4>
+                    <p>Enter your FPL ID. We rank your players using form, points per game, ICT index, minutes, and availability.</p>
+                    <form class="tracker-form" method="get" action="{% url 'fantasy:captain_mode' %}">
+                        <label for="entry-id">Your FPL ID</label>
+                        <input id="entry-id" type="text" name="entry_id" value="{{ entry_id }}" inputmode="numeric" pattern="[0-9]+" placeholder="e.g. 1234567" required>
+                        <button type="submit">Analyze captain</button>
+                    </form>
+                    {% if saved_message %}
+                    <p class="save-note">{{ saved_message }}</p>
+                    {% endif %}
+                    {% if captain_error %}
+                    <p class="inline-error">{{ captain_error }}</p>
+                    {% endif %}
+                </article>
+
+                <article class="season-card reveal">
+                    <div class="ball-icon">C</div>
+                    <h4>{{ season_message }}</h4>
+                    <p>Captain recommendations are recalculated from your latest squad and current FPL stats.</p>
+                    <div class="countdown" data-target="{{ deadline_iso }}">
+                        <div><strong data-count="days">00</strong><span>Days</span></div>
+                        <div><strong data-count="hours">00</strong><span>Hrs</span></div>
+                        <div><strong data-count="minutes">00</strong><span>Min</span></div>
+                        <div><strong data-count="seconds">00</strong><span>Sec</span></div>
+                    </div>
+                </article>
+            </section>
+
+            {% if captain_data %}
+            <section class="insight-grid">
+                <article class="card reveal">
+                    <header class="card-header">
+                        <h4>Recommended Captain</h4>
+                        <span>Top score</span>
+                    </header>
+                    <div class="leader-row">
+                        <div>
+                            <strong>{{ captain_data.captain_pick.name }}</strong>
+                            <p>{{ captain_data.captain_pick.position }} | Current tag: {{ captain_data.captain_pick.captain_tag }}</p>
+                        </div>
+                        <div class="score-cell">
+                            <strong>{{ captain_data.captain_pick.captain_score }}</strong>
+                            <span>Captain score</span>
+                        </div>
+                    </div>
+                    <p>{{ captain_data.captain_pick.reason }}</p>
+                </article>
+
+                <article class="card reveal">
+                    <header class="card-header">
+                        <h4>Vice Captain</h4>
+                        <span>Backup pick</span>
+                    </header>
+                    {% if captain_data.vice_pick %}
+                    <div class="leader-row">
+                        <div>
+                            <strong>{{ captain_data.vice_pick.name }}</strong>
+                            <p>{{ captain_data.vice_pick.position }} | Current tag: {{ captain_data.vice_pick.captain_tag }}</p>
+                        </div>
+                        <div class="score-cell">
+                            <strong>{{ captain_data.vice_pick.captain_score }}</strong>
+                            <span>Captain score</span>
+                        </div>
+                    </div>
+                    <p>{{ captain_data.vice_pick.reason }}</p>
+                    {% else %}
+                    <p>Vice captain recommendation will appear once more players are available.</p>
+                    {% endif %}
+                </article>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Captain Ranking Table</h4>
+                    <span>{{ captain_data.live_data.team_name }} | ID {{ captain_data.live_data.entry_id }}</span>
+                </header>
+                <div class="manager-meta">
+                    <p><strong>Manager:</strong> {{ captain_data.live_data.manager_name }}</p>
+                    <p><strong>Current GW:</strong> {{ captain_data.live_data.current_gameweek }}</p>
+                    <p><strong>Overall Rank:</strong> {{ captain_data.live_data.overall_rank }}</p>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Pos</th>
+                                <th>Captain Score</th>
+                                <th>Form</th>
+                                <th>PPG</th>
+                                <th>ICT</th>
+                                <th>Availability</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in captain_data.top_rows %}
+                            <tr>
+                                <td>#{{ forloop.counter }}</td>
+                                <td>
+                                    <a class="pick-link" href="{% url 'fantasy:live_gameweek' %}?entry_id={{ captain_data.live_data.entry_id }}&player_id={{ row.player_id }}">{{ row.name }}</a>
+                                </td>
+                                <td>{{ row.position }}</td>
+                                <td>{{ row.captain_score }}</td>
+                                <td>{{ row.form }}</td>
+                                <td>{{ row.points_per_game }}</td>
+                                <td>{{ row.ict_index }}</td>
+                                <td>{{ row.availability }}%</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8">No captain candidates available.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}

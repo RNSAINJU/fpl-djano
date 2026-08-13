@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Classic League{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-block">
+            <div class="brand-mark">F</div>
+            <div>
+                <h1>FPL Nepal</h1>
+                <p>Webapp</p>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <p class="nav-label">Main</p>
+            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
+                <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+                <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
+            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
+            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
+            <a class="{% if active_page == 'the_chase' %}active{% endif %}" href="{% url 'fantasy:the_chase' %}">The Chase</a>
+            <a href="/control-center/">Admin Portal</a>
+        </nav>
+    </aside>
+
+    <div class="main-panel">
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+            <h2>Fantasy Premier League Nepal</h2>
+            <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to dashboard</a>
+        </header>
+
+        <main id="main-content" class="main-content" data-league-page="classic" data-live-endpoint="{% url 'fantasy:league_live_data' %}">
+            <section class="team-hero reveal">
+                <div>
+                    <p class="kicker">Core Competition</p>
+                    <h3>Classic League</h3>
+                </div>
+                <span class="chip" data-classic-leader>Leader {{ leader_points }} pts</span>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4 data-league-name>{{ league_name }}</h4>
+                    <span data-source-badge>{% if league_source == 'live' %}Live FPL code 6232{% elif league_source == 'local' %}Local fallback data{% else %}No data source{% endif %}</span>
+                </header>
+                <p class="inline-error {% if not league_error %}is-hidden{% endif %}" data-league-error>{{ league_error|default:'' }}</p>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>League Table</h4>
+                    <span>Overall standings</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>Total Points</th>
+                                <th>Gap</th>
+                                <th>Form</th>
+                            </tr>
+                        </thead>
+                        <tbody data-classic-rows>
+                            {% for row in classic_rows %}
+                            <tr>
+                                <td>#{{ row.rank }}</td>
+                                <td>{{ row.manager_name }}</td>
+                                <td>{{ row.team_name }}</td>
+                                <td>{{ row.total_points }}</td>
+                                <td>{{ row.gap_to_leader }}</td>
+                                <td>
+                                    <span class="status-pill {% if row.form == 'Hot' %}status-pill--safe{% elif row.form == 'Steady' %}status-pill--steady{% else %}status-pill--chasing{% endif %}">
+                                        {{ row.form }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6">No league standings available yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+{% endblock %}

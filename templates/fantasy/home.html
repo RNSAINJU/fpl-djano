@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block title %}Fantasy League Nepal{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-block">
+            <div class="brand-mark">F</div>
+            <div>
+                <h1>FPL Nepal</h1>
+                <p>Webapp</p>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <p class="nav-label">Main</p>
+            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
+            <a href="#dashboard">Dashboard</a>
+            <a href="#top-picks">Players</a>
+            <a href="#fixtures">Compare</a>
+            <a href="#standings">History</a>
+            <p class="nav-label">FPL Nepal</p>
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
+            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+            <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
+            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
+            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
+            <a class="{% if active_page == 'the_chase' %}active{% endif %}" href="{% url 'fantasy:the_chase' %}">The Chase</a>
+            <a href="/control-center/">Admin Portal</a>
+        </nav>
+    </aside>
+
+    <div class="main-panel">
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+            <h2>Fantasy Premier League Nepal</h2>
+            <a class="topbar-button" href="{% url 'fantasy:live_gameweek' %}">+ Add your team</a>
+        </header>
+
+        <main id="main-content" class="main-content">
+            <section class="team-hero reveal" id="dashboard">
+                <div>
+                    <p class="kicker">{{ gameweek_name }}</p>
+                    <h3>Your team</h3>
+                </div>
+                <a class="ghost-button" href="{% url 'fantasy:live_gameweek' %}">Switch team</a>
+            </section>
+
+            <section class="status-grid">
+                <article class="season-card reveal">
+                    <div class="ball-icon">O</div>
+                    <h4>{{ season_message }}</h4>
+                    <p>Your live points, rank and players will appear here as soon as the gameweek begins. Make sure your squad is set before the deadline.</p>
+                    <div class="countdown" data-target="{{ deadline_iso }}">
+                        <div><strong data-count="days">00</strong><span>Days</span></div>
+                        <div><strong data-count="hours">00</strong><span>Hrs</span></div>
+                        <div><strong data-count="minutes">00</strong><span>Min</span></div>
+                        <div><strong data-count="seconds">00</strong><span>Sec</span></div>
+                    </div>
+                    <p class="deadline">{{ gameweek_name }} deadline: {{ deadline_display }}</p>
+                </article>
+
+                <article class="tracker-card reveal">
+                    <h4>See your live gameweek</h4>
+                    <p>Enter your FPL ID to track points, rank and players in real time.</p>
+                    <form action="{% url 'fantasy:live_gameweek' %}" method="get" class="tracker-form">
+                        <label for="fpl-id">Your FPL ID</label>
+                        <input id="fpl-id" name="entry_id" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="e.g. 1234567" required>
+                        <button type="submit">See my team</button>
+                    </form>
+                </article>
+            </section>
+
+            <section class="top-stats-board reveal" id="top-stats">
+                <h4>Top Stats</h4>
+                <div class="top-stats-grid">
+                    <article class="stat-spotlight stat-spotlight--scorer">
+                        <h5>Top Scorer</h5>
+                        {% if top_scorer and top_scorer.photo_url %}
+                        <img src="{{ top_scorer.photo_url }}" alt="{{ top_scorer.name }}">
+                        {% else %}
+                        <div class="player-fallback">{% if top_scorer %}{{ top_scorer.name|slice:":1" }}{% else %}-{% endif %}</div>
+                        {% endif %}
+                        <p class="stat-name">{{ top_scorer.name|default:'No data' }}</p>
+                        <p class="stat-value">{{ top_scorer.goals|default:0 }} Goals</p>
+                    </article>
+
+                    <article class="stat-spotlight stat-spotlight--assist">
+                        <h5>Top Assists</h5>
+                        {% if top_assister and top_assister.photo_url %}
+                        <img src="{{ top_assister.photo_url }}" alt="{{ top_assister.name }}">
+                        {% else %}
+                        <div class="player-fallback">{% if top_assister %}{{ top_assister.name|slice:":1" }}{% else %}-{% endif %}</div>
+                        {% endif %}
+                        <p class="stat-name">{{ top_assister.name|default:'No data' }}</p>
+                        <p class="stat-value">{{ top_assister.assists|default:0 }} Assists</p>
+                    </article>
+
+                    <article class="stat-spotlight stat-spotlight--clean-sheet">
+                        <h5>Clean Sheets</h5>
+                        {% if top_clean_sheet and top_clean_sheet.photo_url %}
+                        <img src="{{ top_clean_sheet.photo_url }}" alt="{{ top_clean_sheet.name }}">
+                        {% else %}
+                        <div class="player-fallback">{% if top_clean_sheet %}{{ top_clean_sheet.name|slice:":1" }}{% else %}-{% endif %}</div>
+                        {% endif %}
+                        <p class="stat-name">{{ top_clean_sheet.name|default:'No data' }}</p>
+                        <p class="stat-value">{{ top_clean_sheet.clean_sheets|default:0 }} Clean Sheets</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="live-fixtures-board reveal" id="live-fixtures">
+                <div class="live-fixtures-head">
+                    <h4>Live Fixtures</h4>
+                    <span>{{ live_fixtures_label }}</span>
+                </div>
+                <div class="live-fixtures-grid">
+                    {% for fixture in live_fixtures %}
+                    <article class="live-fixture-card">
+                        <div class="fixture-teams">
+                            <strong>{{ fixture.home_team.short_name }}</strong>
+                            <span>vs</span>
+                            <strong>{{ fixture.away_team.short_name }}</strong>
+                        </div>
+                        <div class="fixture-status">Upcoming</div>
+                        <p>{{ fixture.kickoff_display }}</p>
+                    </article>
+                    {% empty %}
+                    <article class="live-fixture-card">
+                        <p>No live fixture data available right now.</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="insight-grid">
+                <article class="card reveal" id="top-picks">
+                    <header class="card-header">
+                        <h4>Top Picks</h4>
+                        <span>Most selected assets</span>
+                    </header>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Pos</th>
+                                    <th>Price</th>
+                                    <th>Pts</th>
+                                    <th>Selected</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in top_players %}
+                                <tr>
+                                    <td>{{ player.name }} <small>{{ player.team_short_name }}</small></td>
+                                    <td>{{ player.position_label }}</td>
+                                    <td>{{ player.price }}</td>
+                                    <td>{{ player.total_points }}</td>
+                                    <td>{{ player.selected_by_percent }}%</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5">No player data available right now.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="card reveal" id="fixtures">
+                    <header class="card-header">
+                        <h4>Upcoming Fixtures</h4>
+                        <span>Short-term schedule</span>
+                    </header>
+                    <ul class="fixtures-list">
+                        {% for fixture in fixtures %}
+                        <li>
+                            <div>
+                                <p>{{ fixture.home_team.badge }} {{ fixture.home_team.short_name }} vs {{ fixture.away_team.short_name }} {{ fixture.away_team.badge }}</p>
+                                <small>{{ fixture.kickoff_display }}</small>
+                            </div>
+                            <span class="difficulty difficulty-{{ fixture.difficulty }}">D{{ fixture.difficulty }}</span>
+                        </li>
+                        {% empty %}
+                        <li>
+                            <div>
+                                <p>No fixture data available right now.</p>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </article>
+            </section>
+
+            <section class="card reveal" id="standings">
+                <header class="card-header">
+                    <h4>Mini League Standings</h4>
+                    <span>Weekly momentum</span>
+                </header>
+                <div class="leaders-grid">
+                    {% for entry in standings %}
+                    <div class="leader-row">
+                        <div>
+                            <strong>#{{ entry.rank }} {{ entry.manager_name }}</strong>
+                            <p>{{ entry.team_name }}</p>
+                        </div>
+                        <div class="score-cell">
+                            <strong>{{ entry.total_points }}</strong>
+                            <span>GW +{{ entry.gameweek_points }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="leader-row">
+                        <div>
+                            <strong>No league data available right now.</strong>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+{% endblock %}
