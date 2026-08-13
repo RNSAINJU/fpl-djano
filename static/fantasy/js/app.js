@@ -7,8 +7,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const toggle = document.getElementById('sidebar-toggle');
     if (sidebar && toggle) {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'nav-backdrop';
+        backdrop.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(backdrop);
+
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'sidebar-close';
+        closeButton.setAttribute('aria-label', 'Close navigation');
+        closeButton.textContent = '✕';
+        const brandBlock = sidebar.querySelector('.brand-block');
+        if (brandBlock) {
+            brandBlock.appendChild(closeButton);
+        }
+
+        toggle.setAttribute('aria-expanded', 'false');
+
+        const openSidebar = () => {
+            sidebar.classList.add('is-open');
+            backdrop.classList.add('is-visible');
+            document.body.classList.add('nav-open');
+            toggle.setAttribute('aria-expanded', 'true');
+        };
+
+        const closeSidebar = () => {
+            sidebar.classList.remove('is-open');
+            backdrop.classList.remove('is-visible');
+            document.body.classList.remove('nav-open');
+            toggle.setAttribute('aria-expanded', 'false');
+        };
+
         toggle.addEventListener('click', () => {
-            sidebar.classList.toggle('is-open');
+            if (sidebar.classList.contains('is-open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+
+        closeButton.addEventListener('click', closeSidebar);
+        backdrop.addEventListener('click', closeSidebar);
+
+        sidebar.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', closeSidebar);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeSidebar();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1020) {
+                closeSidebar();
+            }
         });
     }
 
