@@ -13,6 +13,14 @@ from .models import CaptainGameweekScore, PageAdvertisement
 
 FPL_CLASSIC_LEAGUE_ID = 6232
 
+# How long live FPL data (league standings, captain/monthly leaderboards,
+# dashboard) is cached before the next request re-fetches it live. A cache
+# miss on these means fanning out to dozens of live FPL API calls, which
+# can take several seconds - 15 minutes trades a bit of freshness for far
+# fewer visitors ever hitting that cold path, without the data feeling
+# stale for a casual league.
+FPL_CACHE_TIMEOUT = 900
+
 
 def _get_json(url: str) -> dict:
 	with request.urlopen(url, timeout=8) as response:
@@ -338,7 +346,7 @@ def _build_captain_recommendations(entry_id: int) -> tuple[dict | None, str | No
 
 
 def _fetch_dashboard_data() -> dict:
-	return cache.get_or_set('fpl:dashboard_data', _fetch_dashboard_data_live, timeout=300)
+	return cache.get_or_set('fpl:dashboard_data', _fetch_dashboard_data_live, timeout=FPL_CACHE_TIMEOUT)
 
 
 def _fetch_dashboard_data_live() -> dict:
@@ -495,7 +503,7 @@ def _fetch_fpl_league_entries(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[l
 	return cache.get_or_set(
 		f'fpl:league_entries:{league_id}',
 		lambda: _fetch_fpl_league_entries_live(league_id),
-		timeout=300,
+		timeout=FPL_CACHE_TIMEOUT,
 	)
 
 
@@ -572,7 +580,7 @@ def _fetch_captain_leaderboard(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[
 	return cache.get_or_set(
 		f'fpl:captain_leaderboard:{league_id}',
 		lambda: _fetch_captain_leaderboard_live(league_id),
-		timeout=300,
+		timeout=FPL_CACHE_TIMEOUT,
 	)
 
 
@@ -730,7 +738,7 @@ def _fetch_monthly_leaderboard(
 	return cache.get_or_set(
 		f'fpl:monthly_leaderboard:{league_id}:{selected_month or "latest"}',
 		lambda: _fetch_monthly_leaderboard_live(league_id, selected_month),
-		timeout=300,
+		timeout=FPL_CACHE_TIMEOUT,
 	)
 
 
