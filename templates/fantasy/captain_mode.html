@@ -43,11 +43,7 @@
                 <span class="chip">Deadline {{ deadline_display }}</span>
             </section>
 
-            <section class="card reveal">
-                <header class="card-header">
-                    <h4 data-league-name>{{ league_name }}</h4>
-                </header>
-            </section>
+            {% include 'fantasy/_league_banner.html' %}
 
             <section class="card reveal">
                 <header class="card-header">

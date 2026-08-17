@@ -4,7 +4,7 @@ from django.template.response import TemplateResponse
 from django.shortcuts import redirect
 from django.urls import path
 
-from .models import CaptainGameweekScore, LeagueEntry, Player, SiteSettings
+from .models import CaptainGameweekScore, LeagueEntry, PageAdvertisement, Player, SiteSettings
 
 
 class FantasyAdminSite(AdminSite):
@@ -81,6 +81,27 @@ class LeagueEntryAdmin(admin.ModelAdmin):
 	)
 
 
+class PageAdvertisementAdmin(admin.ModelAdmin):
+	list_display = ('page', 'image', 'link_url', 'updated_at')
+	list_display_links = ('page',)
+	readonly_fields = ('page', 'updated_at')
+	fieldsets = (
+		(None, {'fields': ('page',)}),
+		('Advertisement', {
+			'fields': ('image', 'link_url', 'alt_text', 'updated_at'),
+			'description': 'Shown in the right half of this page\'s league banner. Leave the image blank to show no ad on this page.',
+		}),
+	)
+
+	# Exactly one row per Page choice, seeded by migration 0008 - never
+	# add/delete here, only edit the image/link on the existing rows.
+	def has_add_permission(self, request):
+		return False
+
+	def has_delete_permission(self, request, obj=None):
+		return False
+
+
 class SiteSettingsAdmin(admin.ModelAdmin):
 	fieldsets = (
 		('Logo', {'fields': ('logo', 'updated_at'), 'description': 'Upload once - it appears in the sidebar across the whole site and this admin.'}),
@@ -119,3 +140,4 @@ fantasy_admin_site.register(Player, PlayerAdmin)
 fantasy_admin_site.register(LeagueEntry, LeagueEntryAdmin)
 fantasy_admin_site.register(SiteSettings, SiteSettingsAdmin)
 fantasy_admin_site.register(CaptainGameweekScore, CaptainGameweekScoreAdmin)
+fantasy_admin_site.register(PageAdvertisement, PageAdvertisementAdmin)

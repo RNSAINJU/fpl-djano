@@ -43,12 +43,7 @@
                 <span class="chip" data-classic-leader>Leader {{ leader_points }} pts</span>
             </section>
 
-            <section class="card reveal">
-                <header class="card-header">
-                    <h4 data-league-name>{{ league_name }}</h4>
-                </header>
-                <p class="inline-error {% if not league_error %}is-hidden{% endif %}" data-league-error>{{ league_error|default:'' }}</p>
-            </section>
+            {% include 'fantasy/_league_banner.html' %}
 
             <section class="card reveal">
                 <header class="card-header">

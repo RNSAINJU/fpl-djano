@@ -1,0 +1,25 @@
+{% comment %}
+Shared league-name banner used by captain_mode, classic_league,
+gameweek_winners and manager_of_the_month. Left half: site logo + league
+name + live-fetch error (if any). Right half: this page's
+independently-managed ad slot (fantasy.PageAdvertisement), edited per
+page in the admin.
+{% endcomment %}
+<section class="card reveal league-banner">
+    <div class="league-banner__info">
+        <div class="league-banner__brand">
+            {% if site_logo_url %}<img src="{{ site_logo_url }}" alt="Site logo" class="league-banner__logo">{% endif %}
+            <h4 data-league-name>{{ league_name }}</h4>
+        </div>
+        <p class="inline-error {% if not league_error %}is-hidden{% endif %}" data-league-error>{{ league_error|default:'' }}</p>
+    </div>
+    <div class="league-banner__ad">
+        {% if page_ad and page_ad.image %}
+        {% if page_ad.link_url %}<a href="{{ page_ad.link_url }}" target="_blank" rel="noopener noreferrer" class="league-banner__ad-link">{% endif %}
+            <img src="{{ page_ad.image.url }}" alt="{{ page_ad.alt_text|default:'Advertisement' }}" class="league-banner__ad-img">
+        {% if page_ad.link_url %}</a>{% endif %}
+        {% else %}
+        <div class="league-banner__ad-placeholder">Advertisement space</div>
+        {% endif %}
+    </div>
+</section>

@@ -43,6 +43,8 @@
                 <span class="chip" data-monthly-winner-chip>{% if monthly_winner %}Winner {{ monthly_winner.manager_name }}{% else %}No winner yet{% endif %}</span>
             </section>
 
+            {% include 'fantasy/_league_banner.html' %}
+
             <section class="card reveal">
                 <header class="card-header">
                     <h4>Choose Month</h4>

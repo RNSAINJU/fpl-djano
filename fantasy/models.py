@@ -103,6 +103,38 @@ class SiteSettings(models.Model):
 		return obj
 
 
+class PageAdvertisement(models.Model):
+	"""One row per public page, holding the ad banner shown in that page's
+	league-name card. Rows are seeded for every Page choice by migration
+	0008 and are never added/removed from the admin - only their image and
+	link are ever edited - so each page always has exactly one ad slot to
+	manage, independently of the others."""
+	class Page(models.TextChoices):
+		CAPTAIN_MODE = 'captain_mode', 'Captain Mode'
+		CLASSIC_LEAGUE = 'classic_league', 'Classic League'
+		GAMEWEEK_WINNERS = 'gameweek_winners', 'Gameweek Winners'
+		MANAGER_OF_THE_MONTH = 'manager_of_the_month', 'Manager of the Month'
+
+	page = models.CharField(max_length=32, choices=Page.choices, unique=True)
+	image = models.ImageField(
+		upload_to='advertisements/',
+		blank=True,
+		null=True,
+		help_text='Shown in the advertisement half of this page\'s banner. Leave blank to show no ad. Landscape images work best.',
+	)
+	link_url = models.URLField(blank=True, help_text='Optional - clicking the ad opens this link in a new tab.')
+	alt_text = models.CharField(max_length=150, blank=True, help_text='Accessibility text for the ad image.')
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		ordering = ['page']
+		verbose_name = 'Page Advertisement'
+		verbose_name_plural = 'Page Advertisements'
+
+	def __str__(self):
+		return self.get_page_display()
+
+
 class CaptainGameweekScore(models.Model):
 	"""One row per (manager, gameweek): their total gameweek points, plus
 	who they captained and how many points that captain contributed. Only

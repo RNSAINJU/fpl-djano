@@ -593,6 +593,86 @@ body {
     font-size: 12px;
 }
 
+.league-banner {
+    display: flex;
+    align-items: stretch;
+    gap: 20px;
+}
+
+.league-banner__info {
+    flex: 1 1 50%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.league-banner__brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.league-banner__logo {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    border: 1px solid var(--outline);
+    background: #fff;
+    padding: 3px;
+    object-fit: contain;
+}
+
+.league-banner__brand h4 {
+    margin: 0;
+}
+
+.league-banner__ad {
+    flex: 1 1 50%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-left: 1px solid var(--outline);
+    padding-left: 20px;
+}
+
+.league-banner__ad-link {
+    display: block;
+    max-width: 100%;
+}
+
+.league-banner__ad-img {
+    display: block;
+    max-width: 100%;
+    max-height: 90px;
+    border-radius: 10px;
+}
+
+.league-banner__ad-placeholder {
+    width: 100%;
+    text-align: center;
+    padding: 14px;
+    border: 1px dashed var(--outline);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 620px) {
+    .league-banner {
+        flex-direction: column;
+    }
+
+    .league-banner__ad {
+        border-left: none;
+        border-top: 1px solid var(--outline);
+        padding-left: 0;
+        padding-top: 14px;
+    }
+}
+
 .table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;

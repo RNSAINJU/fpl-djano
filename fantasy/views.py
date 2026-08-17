@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 
-from .models import CaptainGameweekScore
+from .models import CaptainGameweekScore, PageAdvertisement
 
 FPL_CLASSIC_LEAGUE_ID = 6232
 
@@ -885,6 +885,13 @@ def _build_classic_data(rows: list[dict]) -> dict:
 	}
 
 
+def _page_ad(page: str) -> PageAdvertisement | None:
+	"""Each page's ad slot, edited independently in the admin. Rows are
+	seeded per Page choice by migration 0009, but fall back to None (no ad
+	shown) if a row is somehow missing rather than erroring the page."""
+	return PageAdvertisement.objects.filter(page=page).first()
+
+
 def home(request):
 	base_context = _base_page_context('home')
 	dashboard_data = _fetch_dashboard_data()
@@ -960,6 +967,7 @@ def captain_mode(request):
 		'leaderboard_status': leaderboard_status,
 		'leaderboard_error': leaderboard_error,
 		'league_name': league_name,
+		'page_ad': _page_ad(PageAdvertisement.Page.CAPTAIN_MODE),
 	}
 
 	if entry_id_raw:
@@ -986,6 +994,7 @@ def gameweek_winners(request):
 		'league_name': league_name,
 		'league_error': league_error,
 		'league_source': league_source,
+		'page_ad': _page_ad(PageAdvertisement.Page.GAMEWEEK_WINNERS),
 	}
 	return render(request, 'fantasy/gameweek_winners.html', context)
 
@@ -994,9 +1003,12 @@ def manager_of_the_month(request):
 	base_context = _base_page_context('manager_of_the_month')
 	selected_month = request.GET.get('month', '').strip() or None
 	monthly_data = _fetch_monthly_leaderboard(selected_month=selected_month)
+	_rows, league_name, _league_error, _league_source = _resolved_league_dataset()
 	context = {
 		**base_context,
 		**monthly_data,
+		'league_name': league_name,
+		'page_ad': _page_ad(PageAdvertisement.Page.MANAGER_OF_THE_MONTH),
 	}
 	return render(request, 'fantasy/manager_of_the_month.html', context)
 
@@ -1011,6 +1023,7 @@ def classic_league(request):
 		'league_name': league_name,
 		'league_error': league_error,
 		'league_source': league_source,
+		'page_ad': _page_ad(PageAdvertisement.Page.CLASSIC_LEAGUE),
 	}
 	return render(request, 'fantasy/classic_league.html', context)
 
