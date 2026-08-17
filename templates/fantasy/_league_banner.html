@@ -2,8 +2,9 @@
 Shared league-name banner used by captain_mode, classic_league,
 gameweek_winners and manager_of_the_month. Left half: site logo + league
 name + live-fetch error (if any). Right half: this page's
-independently-managed ad slot (fantasy.PageAdvertisement), edited per
-page in the admin.
+independently-managed ad slot (fantasy.PageAdvertisement, edited per
+page in the admin) - ad image + caption text, with optional small
+Instagram/Facebook icon links under the image.
 {% endcomment %}
 <section class="card reveal league-banner">
     <div class="league-banner__info">
@@ -15,9 +16,30 @@ page in the admin.
     </div>
     <div class="league-banner__ad">
         {% if page_ad and page_ad.image %}
-        {% if page_ad.link_url %}<a href="{{ page_ad.link_url }}" target="_blank" rel="noopener noreferrer" class="league-banner__ad-link">{% endif %}
-            <img src="{{ page_ad.image.url }}" alt="{{ page_ad.alt_text|default:'Advertisement' }}" class="league-banner__ad-img">
-        {% if page_ad.link_url %}</a>{% endif %}
+        <div class="league-banner__ad-body">
+            <div class="league-banner__ad-media">
+                {% if page_ad.link_url %}<a href="{{ page_ad.link_url }}" target="_blank" rel="noopener noreferrer" class="league-banner__ad-link">{% endif %}
+                    <img src="{{ page_ad.image.url }}" alt="{{ page_ad.alt_text|default:'Advertisement' }}" class="league-banner__ad-img">
+                {% if page_ad.link_url %}</a>{% endif %}
+                {% if page_ad.instagram_url or page_ad.facebook_url %}
+                <div class="league-banner__ad-social">
+                    {% if page_ad.instagram_url %}
+                    <a href="{{ page_ad.instagram_url }}" target="_blank" rel="noopener noreferrer" class="league-banner__social-icon" aria-label="Instagram">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" stroke="none"/></svg>
+                    </a>
+                    {% endif %}
+                    {% if page_ad.facebook_url %}
+                    <a href="{{ page_ad.facebook_url }}" target="_blank" rel="noopener noreferrer" class="league-banner__social-icon" aria-label="Facebook">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg>
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% if page_ad.caption %}
+            <p class="league-banner__ad-caption">{{ page_ad.caption }}</p>
+            {% endif %}
+        </div>
         {% else %}
         <div class="league-banner__ad-placeholder">Advertisement space</div>
         {% endif %}

@@ -88,8 +88,12 @@ class PageAdvertisementAdmin(admin.ModelAdmin):
 	fieldsets = (
 		(None, {'fields': ('page',)}),
 		('Advertisement', {
-			'fields': ('image', 'link_url', 'alt_text', 'updated_at'),
+			'fields': ('image', 'link_url', 'alt_text', 'caption', 'updated_at'),
 			'description': 'Shown in the right half of this page\'s league banner. Leave the image blank to show no ad on this page.',
+		}),
+		('Social links', {
+			'fields': ('instagram_url', 'facebook_url'),
+			'description': 'Optional - shown as small icons under the ad image when set.',
 		}),
 	)
 

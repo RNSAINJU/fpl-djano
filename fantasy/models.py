@@ -122,8 +122,15 @@ class PageAdvertisement(models.Model):
 		null=True,
 		help_text='Shown in the advertisement half of this page\'s banner. Leave blank to show no ad. Landscape images work best.',
 	)
-	link_url = models.URLField(blank=True, help_text='Optional - clicking the ad opens this link in a new tab.')
+	link_url = models.URLField(blank=True, help_text='Optional - clicking the ad image opens this link in a new tab.')
 	alt_text = models.CharField(max_length=150, blank=True, help_text='Accessibility text for the ad image.')
+	caption = models.CharField(
+		max_length=200,
+		blank=True,
+		help_text='Optional short text shown to the right of the ad image (e.g. a tagline or short description).',
+	)
+	instagram_url = models.URLField(blank=True, help_text='Optional - shows a small Instagram icon linking here.')
+	facebook_url = models.URLField(blank=True, help_text='Optional - shows a small Facebook icon linking here.')
 	updated_at = models.DateTimeField(auto_now=True)
 
 	class Meta:

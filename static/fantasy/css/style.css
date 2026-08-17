@@ -633,9 +633,23 @@ body {
     min-width: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
     border-left: 1px solid var(--outline);
     padding-left: 20px;
+}
+
+.league-banner__ad-body {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+}
+
+.league-banner__ad-media {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .league-banner__ad-link {
@@ -646,8 +660,40 @@ body {
 .league-banner__ad-img {
     display: block;
     max-width: 100%;
-    max-height: 90px;
+    max-height: 64px;
     border-radius: 10px;
+}
+
+.league-banner__ad-social {
+    display: flex;
+    gap: 6px;
+}
+
+.league-banner__social-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    border: 1px solid var(--outline);
+    color: var(--text-muted);
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.league-banner__social-icon:hover {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.league-banner__ad-caption {
+    margin: 0;
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .league-banner__ad-placeholder {
