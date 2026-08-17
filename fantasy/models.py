@@ -35,7 +35,17 @@ def _shrink_image(image_field, max_dimension):
 
 	buffer = BytesIO()
 	if has_alpha:
+		# Truecolor RGBA compresses poorly for flat-color logos/graphics that
+		# were originally palette-based - try quantizing to an adaptive
+		# palette too and keep whichever actually comes out smaller.
 		resized.save(buffer, format='PNG', optimize=True)
+		quantized_buffer = BytesIO()
+		try:
+			resized.quantize(colors=256, method=Image.FASTOCTREE).save(quantized_buffer, format='PNG', optimize=True)
+			if quantized_buffer.tell() < buffer.tell():
+				buffer = quantized_buffer
+		except Exception:
+			pass
 	else:
 		resized.save(buffer, format='JPEG', quality=85, optimize=True)
 	buffer.seek(0)
