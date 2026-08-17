@@ -1,3 +1,4 @@
+import os
 from io import BytesIO
 
 from django.core.files.base import ContentFile
@@ -49,7 +50,15 @@ def _shrink_image(image_field, max_dimension):
 	else:
 		resized.save(buffer, format='JPEG', quality=85, optimize=True)
 	buffer.seek(0)
-	image_field.save(image_field.name, ContentFile(buffer.read()), save=False)
+
+	# FieldFile.save() re-applies upload_to to whatever name it's given, so
+	# passing the already-prefixed image_field.name back in would double it
+	# up (e.g. advertisements/advertisements/...) - pass just the basename.
+	# Extension is derived from the format actually written above, since a
+	# PNG upload can end up re-encoded as JPEG (or vice versa).
+	stem = os.path.splitext(os.path.basename(image_field.name))[0]
+	new_name = f'{stem}.png' if has_alpha else f'{stem}.jpg'
+	image_field.save(new_name, ContentFile(buffer.read()), save=False)
 
 
 class Team(models.Model):
