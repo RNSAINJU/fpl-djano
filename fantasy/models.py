@@ -1,4 +1,45 @@
+from io import BytesIO
+
+from django.core.files.base import ContentFile
 from django.db import models
+
+
+def _shrink_image(image_field, max_dimension):
+	"""Downscale an uploaded image in place if its longest side exceeds
+	max_dimension, so a multi-megapixel phone photo doesn't ship in full
+	for something that renders as a small icon/banner. No-op if the file
+	is already small enough (including on every subsequent save of an
+	already-processed image, so this is safe to call unconditionally)."""
+	if not image_field or not image_field.name:
+		return
+	try:
+		from PIL import Image
+	except ImportError:
+		return
+	try:
+		image_field.open()
+		img = Image.open(image_field)
+		img.load()
+	except Exception:
+		return
+
+	width, height = img.size
+	if max(width, height) <= max_dimension:
+		return
+
+	ratio = max_dimension / max(width, height)
+	new_size = (max(1, round(width * ratio)), max(1, round(height * ratio)))
+	has_alpha = img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info)
+	img = img.convert('RGBA') if has_alpha else img.convert('RGB')
+	resized = img.resize(new_size, Image.LANCZOS)
+
+	buffer = BytesIO()
+	if has_alpha:
+		resized.save(buffer, format='PNG', optimize=True)
+	else:
+		resized.save(buffer, format='JPEG', quality=85, optimize=True)
+	buffer.seek(0)
+	image_field.save(image_field.name, ContentFile(buffer.read()), save=False)
 
 
 class Team(models.Model):
@@ -92,6 +133,9 @@ class SiteSettings(models.Model):
 
 	def save(self, *args, **kwargs):
 		self.pk = 1
+		# Renders as a small ~40px mark everywhere it's used - cap well above
+		# that for retina screens without shipping a multi-megapixel photo.
+		_shrink_image(self.logo, max_dimension=200)
 		super().save(*args, **kwargs)
 
 	def delete(self, *args, **kwargs):
@@ -140,6 +184,12 @@ class PageAdvertisement(models.Model):
 
 	def __str__(self):
 		return self.get_page_display()
+
+	def save(self, *args, **kwargs):
+		# Renders capped at 64px tall in the banner - cap the source well
+		# above that for retina/wide layouts without shipping full-res photos.
+		_shrink_image(self.image, max_dimension=800)
+		super().save(*args, **kwargs)
 
 
 class CaptainGameweekScore(models.Model):
