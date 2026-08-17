@@ -1,11 +1,15 @@
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from urllib import error, request
 
+from django.core.cache import cache
+from django.db.models import F, Sum
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 
+from .models import CaptainGameweekScore
 
 FPL_CLASSIC_LEAGUE_ID = 6232
 
@@ -334,6 +338,10 @@ def _build_captain_recommendations(entry_id: int) -> tuple[dict | None, str | No
 
 
 def _fetch_dashboard_data() -> dict:
+	return cache.get_or_set('fpl:dashboard_data', _fetch_dashboard_data_live, timeout=300)
+
+
+def _fetch_dashboard_data_live() -> dict:
 	position_lookup = {
 		1: 'Goalkeeper',
 		2: 'Defender',
@@ -484,14 +492,49 @@ def _base_page_context(active_page: str) -> dict:
 
 
 def _fetch_fpl_league_entries(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
-	url = f'https://fantasy.premierleague.com/api/leagues-classic/{league_id}/standings/?page_new_entries=1&page_standings=1'
-	try:
-		payload = _get_json(url)
-		league_name = payload.get('league', {}).get('name', f'FPL League {league_id}')
-		standings = payload.get('standings', {}).get('results', [])
-		rows = []
+	return cache.get_or_set(
+		f'fpl:league_entries:{league_id}',
+		lambda: _fetch_fpl_league_entries_live(league_id),
+		timeout=300,
+	)
 
-		for index, item in enumerate(standings, start=1):
+
+def _fetch_league_pages(league_id: int, page_param: str, result_key: str, max_pages: int = 200) -> tuple[list[dict], dict]:
+	base_url = f'https://fantasy.premierleague.com/api/leagues-classic/{league_id}/standings/'
+	page = 1
+	rows: list[dict] = []
+	first_payload: dict = {}
+	while page <= max_pages:
+		params = {'page_standings': 1, 'page_new_entries': 1, page_param: page}
+		url = base_url + '?' + '&'.join(f'{key}={value}' for key, value in params.items())
+		payload = _get_json(url)
+		if page == 1:
+			first_payload = payload
+		section = payload.get(result_key, {})
+		rows.extend(section.get('results', []))
+		if not section.get('has_next'):
+			break
+		page += 1
+	return rows, first_payload
+
+
+def _fetch_league_entry_rows(league_id: int) -> tuple[list[dict], bool]:
+	"""Returns (rows, using_new_entries). Falls back to newly-joined entries
+	when the league hasn't produced scored standings yet (e.g. pre-season)."""
+	standings, _ = _fetch_league_pages(league_id, 'page_standings', 'standings')
+	if standings:
+		return standings, False
+	new_entries, _ = _fetch_league_pages(league_id, 'page_new_entries', 'new_entries')
+	return new_entries, True
+
+
+def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
+	try:
+		standings_raw, first_payload = _fetch_league_pages(league_id, 'page_standings', 'standings')
+		league_name = first_payload.get('league', {}).get('name', f'FPL League {league_id}')
+
+		rows = []
+		for index, item in enumerate(standings_raw, start=1):
 			manager_name = item.get('player_name', '').strip() or 'Unknown Manager'
 			rows.append(
 				{
@@ -506,8 +549,8 @@ def _fetch_fpl_league_entries(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[l
 		if rows:
 			return rows, league_name, None
 
-		new_entries = payload.get('new_entries', {}).get('results', [])
-		for index, item in enumerate(new_entries, start=1):
+		new_entries_raw, _ = _fetch_league_pages(league_id, 'page_new_entries', 'new_entries')
+		for index, item in enumerate(new_entries_raw, start=1):
 			full_name = f"{item.get('player_first_name', '')} {item.get('player_last_name', '')}".strip()
 			rows.append(
 				{
@@ -523,6 +566,131 @@ def _fetch_fpl_league_entries(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[l
 		return rows, league_name, message
 	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
 		return [], f'FPL League {league_id}', 'Live league data unavailable. Showing local data.'
+
+
+def _fetch_captain_leaderboard(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
+	return cache.get_or_set(
+		f'fpl:captain_leaderboard:{league_id}',
+		lambda: _fetch_captain_leaderboard_live(league_id),
+		timeout=300,
+	)
+
+
+def _fetch_captain_leaderboard_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
+	"""Season-long Captain Mode leaderboard: only each manager's captain's
+	points count, added up across every gameweek played so far. Finished
+	gameweeks are read straight from CaptainGameweekScore (populated by the
+	sync_fpl_data management command) rather than re-fetched here - only the
+	CURRENTLY in-progress gameweek (if any) is fetched live, concurrently
+	across managers, and added on top of the stored season total."""
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		current_event = next((event for event in events if event.get('is_current')), None)
+		next_event = next((event for event in events if event.get('is_next')), None)
+		current_gameweek = current_event.get('id') if current_event else None
+		next_gameweek = next_event.get('id') if next_event else None
+		latest_finished_gameweek = (
+			CaptainGameweekScore.objects.order_by('-gameweek').values_list('gameweek', flat=True).first()
+		)
+
+		if current_gameweek:
+			status_label = f'Live - GW{current_gameweek} in progress'
+		elif latest_finished_gameweek:
+			status_label = f'Season total - through GW{latest_finished_gameweek}'
+		elif next_gameweek:
+			status_label = f'Season total - GW{next_gameweek} starts soon'
+		else:
+			status_label = 'Season total'
+
+		entry_rows, using_new_entries = _fetch_league_entry_rows(league_id)
+		if not entry_rows:
+			return [], status_label, 'League fetched, but no members were returned yet.'
+
+		managers: dict[int, dict] = {}
+		for row in entry_rows:
+			entry_id = row.get('entry')
+			if not entry_id:
+				continue
+			if using_new_entries:
+				manager_name = f"{row.get('player_first_name', '')} {row.get('player_last_name', '')}".strip() or 'New Manager'
+			else:
+				manager_name = row.get('player_name', '').strip() or 'Unknown Manager'
+			managers[entry_id] = {
+				'entry_id': entry_id,
+				'manager_name': manager_name,
+				'team_name': row.get('entry_name', 'Unknown Team'),
+				'captain_name': '-',
+				'captain_points': 0,
+			}
+
+		# Season total from already-finished gameweeks (fast DB read, no API calls).
+		stored_totals = (
+			CaptainGameweekScore.objects.filter(entry_id__in=managers.keys())
+			.values('entry_id')
+			.annotate(total=Sum('captain_points'))
+		)
+		for row in stored_totals:
+			if row['entry_id'] in managers:
+				managers[row['entry_id']]['captain_points'] += row['total'] or 0
+
+		# Most recent finished gameweek's captain, just for display context.
+		# (SQLite has no DISTINCT ON, so just walk gameweeks ascending and
+		# let each later row overwrite the previous - last write wins.)
+		if managers:
+			captain_history = (
+				CaptainGameweekScore.objects.filter(entry_id__in=managers.keys())
+				.order_by('gameweek')
+				.values_list('entry_id', 'captain_name')
+			)
+			for entry_id, name in captain_history:
+				if name and name != '-' and entry_id in managers:
+					managers[entry_id]['captain_name'] = name
+
+		# Add the currently in-progress gameweek's live points on top, if any.
+		if current_gameweek:
+			player_name_lookup = {el['id']: el.get('web_name', 'Unknown') for el in bootstrap.get('elements', [])}
+			live_points_by_player: dict[int, int] = {}
+			try:
+				live_payload = _get_json(f'https://fantasy.premierleague.com/api/event/{current_gameweek}/live/')
+				for element in live_payload.get('elements', []):
+					live_points_by_player[element.get('id')] = element.get('stats', {}).get('total_points', 0)
+			except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+				live_points_by_player = {}
+
+			def fetch_one(entry_id: int) -> tuple[int, str, int] | None:
+				try:
+					picks_payload = _get_json(
+						f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
+					)
+					captain_pick = next((pick for pick in picks_payload.get('picks', []) if pick.get('is_captain')), None)
+					if not captain_pick:
+						return None
+					element_id = captain_pick.get('element')
+					multiplier = captain_pick.get('multiplier') or 2
+					points = live_points_by_player.get(element_id, 0) * multiplier
+					name = player_name_lookup.get(element_id, 'Unknown')
+					return entry_id, name, points
+				except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+					return None
+
+			with ThreadPoolExecutor(max_workers=15) as executor:
+				futures = [executor.submit(fetch_one, entry_id) for entry_id in managers]
+				for future in as_completed(futures):
+					result = future.result()
+					if result:
+						entry_id, captain_name, points = result
+						managers[entry_id]['captain_points'] += points
+						managers[entry_id]['captain_name'] = captain_name
+
+		leaderboard = list(managers.values())
+		leaderboard.sort(key=lambda row: row['captain_points'], reverse=True)
+		for index, row in enumerate(leaderboard, start=1):
+			row['rank'] = index
+
+		return leaderboard, status_label, None
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return [], 'Season total', 'Captain leaderboard temporarily unavailable.'
 
 
 def _resolved_league_dataset() -> tuple[list[dict], str, str | None, str]:
@@ -542,54 +710,155 @@ def _build_gameweek_data(rows: list[dict]) -> dict:
 	}
 
 
-def _build_monthly_data(rows: list[dict]) -> dict:
-	scored_entries = []
-	for row in rows:
-		monthly_score = (row['gameweek_points'] * 3) + (row['total_points'] // 10)
-		scored_entries.append(
-			{
-				'manager_name': row['manager_name'],
-				'team_name': row['team_name'],
-				'monthly_score': monthly_score,
-			}
-		)
+def _month_label(year_month: str) -> str:
+	return datetime.strptime(year_month, '%Y-%m').strftime('%B %Y')
 
-	scored_entries.sort(key=lambda item: item['monthly_score'], reverse=True)
-	for index, item in enumerate(scored_entries, start=1):
-		item['rank'] = index
 
-	return {
-		'monthly_rankings': scored_entries[:10],
-		'monthly_winner': scored_entries[0] if scored_entries else None,
+def _gameweek_month_map(events: list[dict]) -> dict[int, str]:
+	month_map = {}
+	for event in events:
+		deadline = event.get('deadline_time')
+		if deadline:
+			dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+			month_map[event['id']] = dt.strftime('%Y-%m')
+	return month_map
+
+
+def _fetch_monthly_leaderboard(
+	league_id: int = FPL_CLASSIC_LEAGUE_ID, selected_month: str | None = None
+) -> dict:
+	return cache.get_or_set(
+		f'fpl:monthly_leaderboard:{league_id}:{selected_month or "latest"}',
+		lambda: _fetch_monthly_leaderboard_live(league_id, selected_month),
+		timeout=300,
+	)
+
+
+def _fetch_monthly_leaderboard_live(
+	league_id: int = FPL_CLASSIC_LEAGUE_ID, selected_month: str | None = None
+) -> dict:
+	"""Manager of the Month: Sigma (gameweek points - transfer hit cost) for
+	only the gameweeks whose deadline falls in the chosen calendar month.
+	Finished gameweeks are read straight from CaptainGameweekScore
+	(populated by sync_fpl_data), net of whatever hit cost was stored for
+	that gameweek; if the currently in-progress gameweek falls in the
+	selected month, its points are fetched live and added on top net of
+	that gameweek's hit cost too, same pattern as the season-long Captain
+	Mode leaderboard."""
+	empty = {
+		'monthly_rankings': [],
+		'monthly_winner': None,
+		'available_months': [],
+		'selected_month': None,
+		'selected_month_label': None,
+		'monthly_error': None,
 	}
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		current_event = next((event for event in events if event.get('is_current')), None)
+		next_event = next((event for event in events if event.get('is_next')), None)
+		current_gameweek = current_event.get('id') if current_event else None
 
+		gameweek_month_map = _gameweek_month_map(events)
 
-def _build_chase_data(rows: list[dict]) -> dict:
-	sorted_rows = sorted(rows, key=lambda row: row['total_points'], reverse=True)
-	if sorted_rows:
-		safe_line_index = max(0, min(len(sorted_rows) - 1, len(sorted_rows) // 2 - 1))
-		safe_line_points = sorted_rows[safe_line_index]['total_points']
-	else:
-		safe_line_points = 0
+		stored_gameweeks = CaptainGameweekScore.objects.values_list('gameweek', flat=True).distinct()
+		months_with_data = {gameweek_month_map[gw] for gw in stored_gameweeks if gw in gameweek_month_map}
 
-	chase_table = []
-	for row in sorted_rows:
-		gap = row['total_points'] - safe_line_points
-		status = 'Safe' if gap >= 0 else 'Chasing'
-		chase_table.append(
-			{
-				'rank': row['rank'],
-				'manager_name': row['manager_name'],
-				'total_points': row['total_points'],
-				'gap': gap,
-				'status': status,
+		# Always include the current-or-next gameweek's month too, so there's
+		# a sensible month to land on before any month has finished.
+		reference_gameweek = current_gameweek or (next_event.get('id') if next_event else None)
+		reference_month = gameweek_month_map.get(reference_gameweek) if reference_gameweek else None
+		if reference_month:
+			months_with_data.add(reference_month)
+
+		available_months = sorted(months_with_data)
+		if not available_months:
+			return {**empty, 'monthly_error': 'Could not determine any gameweek months from the FPL API.'}
+
+		if selected_month not in available_months:
+			selected_month = available_months[-1]
+
+		gameweeks_in_month = [gw for gw, month in gameweek_month_map.items() if month == selected_month]
+
+		entry_rows, using_new_entries = _fetch_league_entry_rows(league_id)
+		if not entry_rows:
+			return {
+				**empty,
+				'available_months': [{'value': m, 'label': _month_label(m)} for m in available_months],
+				'selected_month': selected_month,
+				'selected_month_label': _month_label(selected_month),
+				'monthly_error': 'League fetched, but no members were returned yet.',
 			}
-		)
 
-	return {
-		'safe_line_points': safe_line_points,
-		'chase_table': chase_table,
-	}
+		managers: dict[int, dict] = {}
+		for index, row in enumerate(entry_rows, start=1):
+			entry_id = row.get('entry')
+			if not entry_id:
+				continue
+			if using_new_entries:
+				manager_name = f"{row.get('player_first_name', '')} {row.get('player_last_name', '')}".strip() or 'New Manager'
+				league_rank = index
+			else:
+				manager_name = row.get('player_name', '').strip() or 'Unknown Manager'
+				league_rank = row.get('rank') or index
+			managers[entry_id] = {
+				'entry_id': entry_id,
+				'manager_name': manager_name,
+				'team_name': row.get('entry_name', 'Unknown Team'),
+				'league_rank': league_rank,
+				'monthly_points': 0,
+				'monthly_hits': 0,
+			}
+
+		stored_sums = (
+			CaptainGameweekScore.objects.filter(entry_id__in=managers.keys(), gameweek__in=gameweeks_in_month)
+			.values('entry_id')
+			.annotate(
+				net_total=Sum(F('gameweek_points') - F('event_transfers_cost')),
+				hits_total=Sum('event_transfers_cost'),
+			)
+		)
+		for row in stored_sums:
+			if row['entry_id'] in managers:
+				managers[row['entry_id']]['monthly_points'] += row['net_total'] or 0
+				managers[row['entry_id']]['monthly_hits'] += row['hits_total'] or 0
+
+		if current_gameweek and gameweek_month_map.get(current_gameweek) == selected_month:
+			def fetch_one(entry_id: int) -> tuple[int, int, int] | None:
+				try:
+					picks_payload = _get_json(
+						f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
+					)
+					entry_history = picks_payload.get('entry_history', {})
+					return entry_id, entry_history.get('points', 0), entry_history.get('event_transfers_cost', 0)
+				except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+					return None
+
+			with ThreadPoolExecutor(max_workers=15) as executor:
+				futures = [executor.submit(fetch_one, entry_id) for entry_id in managers]
+				for future in as_completed(futures):
+					result = future.result()
+					if result:
+						entry_id, points, hits = result
+						managers[entry_id]['monthly_points'] += points - hits
+						managers[entry_id]['monthly_hits'] += hits
+
+		leaderboard = list(managers.values())
+		leaderboard.sort(key=lambda row: row['monthly_points'], reverse=True)
+		for index, row in enumerate(leaderboard, start=1):
+			row['rank'] = index
+
+		return {
+			'monthly_rankings': leaderboard[:15],
+			'monthly_winner': leaderboard[0] if leaderboard else None,
+			'available_months': [{'value': m, 'label': _month_label(m)} for m in available_months],
+			'selected_month': selected_month,
+			'selected_month_label': _month_label(selected_month),
+			'monthly_error': None,
+		}
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return {**empty, 'monthly_error': 'Monthly leaderboard temporarily unavailable.'}
 
 
 def _build_classic_data(rows: list[dict]) -> dict:
@@ -679,12 +948,18 @@ def captain_mode(request):
 		entry_id_raw = str(request.session.get('fpl_entry_id', '')).strip()
 
 	base_context = _base_page_context('captain_mode')
+	captain_leaderboard, leaderboard_status, leaderboard_error = _fetch_captain_leaderboard()
+	_rows, league_name, _league_error, _league_source = _resolved_league_dataset()
 	context = {
 		**base_context,
 		'entry_id': entry_id_raw,
 		'captain_data': None,
 		'captain_error': None,
 		'saved_message': None,
+		'captain_leaderboard': captain_leaderboard,
+		'leaderboard_status': leaderboard_status,
+		'leaderboard_error': leaderboard_error,
+		'league_name': league_name,
 	}
 
 	if entry_id_raw:
@@ -717,30 +992,13 @@ def gameweek_winners(request):
 
 def manager_of_the_month(request):
 	base_context = _base_page_context('manager_of_the_month')
-	rows, league_name, league_error, league_source = _resolved_league_dataset()
-	monthly_data = _build_monthly_data(rows)
+	selected_month = request.GET.get('month', '').strip() or None
+	monthly_data = _fetch_monthly_leaderboard(selected_month=selected_month)
 	context = {
 		**base_context,
 		**monthly_data,
-		'league_name': league_name,
-		'league_error': league_error,
-		'league_source': league_source,
 	}
 	return render(request, 'fantasy/manager_of_the_month.html', context)
-
-
-def the_chase(request):
-	base_context = _base_page_context('the_chase')
-	rows, league_name, league_error, league_source = _resolved_league_dataset()
-	chase_data = _build_chase_data(rows)
-	context = {
-		**base_context,
-		**chase_data,
-		'league_name': league_name,
-		'league_error': league_error,
-		'league_source': league_source,
-	}
-	return render(request, 'fantasy/the_chase.html', context)
 
 
 def classic_league(request):
@@ -761,8 +1019,8 @@ def league_live_data(request):
 	rows, league_name, league_error, league_source = _resolved_league_dataset()
 	classic_data = _build_classic_data(rows)
 	gameweek_data = _build_gameweek_data(rows)
-	monthly_data = _build_monthly_data(rows)
-	chase_data = _build_chase_data(rows)
+	selected_month = request.GET.get('month', '').strip() or None
+	monthly_data = _fetch_monthly_leaderboard(selected_month=selected_month)
 
 	response = {
 		'league_name': league_name,
@@ -779,10 +1037,8 @@ def league_live_data(request):
 		'monthly': {
 			'winner': monthly_data['monthly_winner'],
 			'rankings': monthly_data['monthly_rankings'],
-		},
-		'chase': {
-			'safe_line_points': chase_data['safe_line_points'],
-			'rows': chase_data['chase_table'],
+			'selected_month': monthly_data['selected_month'],
+			'selected_month_label': monthly_data['selected_month_label'],
 		},
 	}
 	return JsonResponse(response)

@@ -6,29 +6,31 @@
 <div class="app-shell">
     <aside class="sidebar" id="sidebar">
         <div class="brand-block">
-            <div class="brand-mark">F</div>
+            <div class="brand-mark{% if site_logo_url %} brand-mark--logo{% endif %}">{% if site_logo_url %}<img src="{{ site_logo_url }}" alt="FPL Bhaktapur logo">{% else %}F{% endif %}</div>
             <div>
-                <h1>FPL Nepal</h1>
-                <p>Webapp</p>
+                <h1>FPL Bhaktapur</h1>
             </div>
         </div>
         <nav class="sidebar-nav">
             <p class="nav-label">Main</p>
             <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
+            <a href="{% url 'fantasy:home' %}#dashboard">Dashboard</a>
+            <a href="{% url 'fantasy:home' %}#top-picks">Players</a>
+            <a href="{% url 'fantasy:home' %}#fixtures">Compare</a>
+            <a href="{% url 'fantasy:home' %}#standings">History</a>
+            <p class="nav-label">FPL Bhaktapur</p>
             <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
-               <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
             <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
             <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
             <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
-            <a class="{% if active_page == 'the_chase' %}active{% endif %}" href="{% url 'fantasy:the_chase' %}">The Chase</a>
-            <a href="/control-center/">Admin Portal</a>
         </nav>
     </aside>
 
     <div class="main-panel">
         <header class="topbar">
             <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
-            <h2>Fantasy Premier League Nepal</h2>
+            <h2>FPL Bhaktapur</h2>
             <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to dashboard</a>
         </header>
 
@@ -44,7 +46,6 @@
             <section class="card reveal">
                 <header class="card-header">
                     <h4 data-league-name>{{ league_name }}</h4>
-                    <span data-source-badge>{% if league_source == 'live' %}Live FPL code 6232{% elif league_source == 'local' %}Local fallback data{% else %}No data source{% endif %}</span>
                 </header>
                 <p class="inline-error {% if not league_error %}is-hidden{% endif %}" data-league-error>{{ league_error|default:'' }}</p>
             </section>

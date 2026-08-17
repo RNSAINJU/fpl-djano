@@ -4,15 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}FPL Nepal Style{% endblock %}</title>
+    <title>{% block title %}FPL Bhaktapur Style{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'fantasy/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'fantasy/css/style.css' %}?v=20260818a">
 </head>
 <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
     {% block content %}{% endblock %}
-    <script src="{% static 'fantasy/js/app.js' %}"></script>
+    <script src="{% static 'fantasy/js/app.js' %}?v=20260818a"></script>
 </body>
 </html>

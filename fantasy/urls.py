@@ -8,7 +8,6 @@ from .views import (
     league_live_data,
     live_gameweek,
     manager_of_the_month,
-    the_chase,
 )
 
 app_name = 'fantasy'
@@ -19,7 +18,6 @@ urlpatterns = [
     path('captain-mode/', captain_mode, name='captain_mode'),
     path('gameweek-winners/', gameweek_winners, name='gameweek_winners'),
     path('manager-of-the-month/', manager_of_the_month, name='manager_of_the_month'),
-    path('the-chase/', the_chase, name='the_chase'),
     path('classic-league/', classic_league, name='classic_league'),
     path('api/league-live-data/', league_live_data, name='league_live_data'),
 ]

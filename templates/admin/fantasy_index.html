@@ -1,57 +1,10 @@
 {% extends "admin/index.html" %}
 
-{% block extrastyle %}
-{{ block.super }}
-<style>
-#content-main {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-}
-.module caption {
-    background: linear-gradient(120deg, #4a1c57, #8f1650);
-}
-.dashboard-banner {
-    padding: 16px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: linear-gradient(120deg, rgba(74, 28, 87, 0.86), rgba(143, 22, 80, 0.86));
-    color: #f5e8fc;
-}
-.dashboard-banner h2 {
-    margin: 0 0 6px;
-}
-.dashboard-banner p {
-    margin: 0;
-    opacity: 0.92;
-}
-.dashboard-links {
-    margin-top: 10px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-.dashboard-links a {
-    color: #ffd4ec;
-    text-decoration: none;
-    border: 1px solid rgba(255, 212, 236, 0.35);
-    border-radius: 999px;
-    padding: 6px 12px;
-}
-</style>
-{% endblock %}
-
 {% block content %}
-<div id="content-main">
-    <section class="dashboard-banner">
-        <h2>Fantasy League Nepal Admin Portal</h2>
-        <p>Use quick actions to manage your Top Picks and Mini League Standings.</p>
-        <div class="dashboard-links">
-            <a href="{% url 'fantasy_admin:fantasy_player_changelist' %}">Manage Top Picks</a>
-            <a href="{% url 'fantasy_admin:fantasy_leagueentry_changelist' %}">Manage Standings</a>
-            <a href="{% url 'fantasy_admin:dashboard' %}">Open Dashboard</a>
-        </div>
-    </section>
-    {{ block.super }}
+<div class="quick-actions-row">
+    <a class="quick-action-btn" href="{% url 'fantasy_admin:dashboard' %}">📊 Quick Stats Dashboard</a>
+    <a class="quick-action-btn quick-action-btn--accent" href="{% url 'fantasy_admin:fantasy_player_changelist' %}">⭐ Manage Top Picks</a>
+    <a class="quick-action-btn quick-action-btn--ghost" href="{% url 'fantasy_admin:fantasy_leagueentry_changelist' %}">🏆 Manage Standings</a>
 </div>
+{{ block.super }}
 {% endblock %}

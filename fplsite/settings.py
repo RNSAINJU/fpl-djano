@@ -33,6 +33,27 @@ ALLOWED_HOSTS = [
 ]
 
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': BASE_DIR / '.django_cache',
+    }
+}
+
+
+# This VPS hosts multiple apps reachable via the same bare IP on different
+# ports. Browser cookies are scoped by hostname only (not port), so the
+# default 'csrftoken'/'sessionid' cookie names collide with sibling apps
+# on this host that also use Django's defaults. Unique names prevent that.
+CSRF_COOKIE_NAME = 'fpl_csrftoken'
+SESSION_COOKIE_NAME = 'fpl_sessionid'
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', 'http://82.197.69.121:8084').split(',')
+    if origin.strip()
+]
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -67,6 +88,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'fantasy.context_processors.site_branding',
             ],
         },
     },
@@ -123,3 +145,6 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'

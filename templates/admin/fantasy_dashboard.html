@@ -1,56 +1,6 @@
 {% extends "admin/base_site.html" %}
 
-{% block extrastyle %}
-{{ block.super }}
-<style>
-.portal-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.portal-card {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 14px;
-}
-.portal-kpi {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
-}
-.portal-kpi strong {
-    font-size: 26px;
-    line-height: 1;
-}
-.portal-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-.portal-list li {
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-}
-.portal-list li:last-child {
-    border-bottom: 0;
-}
-.portal-actions {
-    margin-top: 12px;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-@media (max-width: 900px) {
-    .portal-grid {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
-{% endblock %}
-
 {% block content %}
-<h1>Control Center Dashboard</h1>
 <div class="portal-grid">
     <section class="portal-card">
         <div class="portal-kpi">

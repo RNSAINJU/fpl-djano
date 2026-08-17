@@ -2,6 +2,7 @@ from django.db import models
 
 
 class Team(models.Model):
+	fpl_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
 	name = models.CharField(max_length=100)
 	short_name = models.CharField(max_length=8)
 	strength = models.PositiveSmallIntegerField(default=3)
@@ -21,6 +22,7 @@ class Player(models.Model):
 		MIDFIELDER = 'MID', 'Midfielder'
 		FORWARD = 'FWD', 'Forward'
 
+	fpl_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
 	name = models.CharField(max_length=120)
 	team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='players')
 	position = models.CharField(max_length=3, choices=Position.choices)
@@ -40,6 +42,7 @@ class Player(models.Model):
 
 
 class Fixture(models.Model):
+	fpl_id = models.PositiveIntegerField(unique=True, null=True, blank=True)
 	home_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='home_fixtures')
 	away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='away_fixtures')
 	kickoff = models.DateTimeField()
@@ -66,3 +69,66 @@ class LeagueEntry(models.Model):
 
 	def __str__(self):
 		return f'#{self.rank} {self.manager_name}'
+
+
+class SiteSettings(models.Model):
+	"""Singleton row holding site-wide branding. Always saved/loaded at
+	pk=1 so there's exactly one place to manage the logo shown across the
+	public site and the admin panel."""
+	logo = models.ImageField(
+		upload_to='branding/',
+		blank=True,
+		null=True,
+		help_text='Shown in the sidebar/brand mark across the site and admin. Square-ish images work best.',
+	)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		verbose_name = 'Site Branding'
+		verbose_name_plural = 'Site Branding'
+
+	def __str__(self):
+		return 'Site Branding'
+
+	def save(self, *args, **kwargs):
+		self.pk = 1
+		super().save(*args, **kwargs)
+
+	def delete(self, *args, **kwargs):
+		pass
+
+	@classmethod
+	def load(cls):
+		obj, _ = cls.objects.get_or_create(pk=1)
+		return obj
+
+
+class CaptainGameweekScore(models.Model):
+	"""One row per (manager, gameweek): their total gameweek points, plus
+	who they captained and how many points that captain contributed. Only
+	ever written for FINISHED gameweeks, since those points never change
+	again - the season-total captain leaderboard and the monthly-points
+	leaderboard both sum straight from this table instead of re-fetching
+	every manager's picks for every past gameweek on every page load. The
+	current, still-in-progress gameweek is always fetched live and added on
+	top at render time instead of being stored here."""
+	entry_id = models.PositiveIntegerField()
+	manager_name = models.CharField(max_length=100)
+	team_name = models.CharField(max_length=100)
+	gameweek = models.PositiveSmallIntegerField()
+	gameweek_points = models.IntegerField(default=0)
+	event_transfers_cost = models.PositiveSmallIntegerField(
+		default=0,
+		help_text='Points deducted for transfer hits taken this gameweek (e.g. 2 extra transfers = 4).',
+	)
+	captain_name = models.CharField(max_length=120, blank=True)
+	captain_points = models.IntegerField(default=0)
+
+	class Meta:
+		unique_together = ('entry_id', 'gameweek')
+		ordering = ['gameweek']
+		verbose_name = 'Captain gameweek score'
+		verbose_name_plural = 'Captain gameweek scores'
+
+	def __str__(self):
+		return f'GW{self.gameweek}: {self.manager_name} ({self.captain_points} captain pts)'

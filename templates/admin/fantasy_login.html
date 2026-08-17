@@ -1,36 +1,9 @@
 {% extends "admin/login.html" %}
 
-{% block branding %}
-<h1 id="site-name">Fantasy League Nepal Control Center</h1>
-<p style="margin: 8px 0 0; color: #d3b7dc; font-size: 14px;">Manage Top Picks and Mini League Standings</p>
-{% endblock %}
-
-{% block extrastyle %}
-{{ block.super }}
-<style>
-:root {
-    --primary: #8f1650;
-    --secondary: #4a1c57;
-    --accent: #ec4a8a;
-}
-body.login {
-    background: radial-gradient(circle at 14% 14%, #54226a 0%, #2e0c3f 34%, #170526 100%);
-}
-.login #container {
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 14px 34px rgba(5, 2, 10, 0.45);
-}
-.login #header {
-    background: linear-gradient(120deg, #4a1c57, #8f1650);
-    padding: 16px 22px;
-}
-.submit-row input {
-    width: 100%;
-    border-radius: 10px;
-    background: linear-gradient(120deg, #8f1650, #ec4a8a);
-    border: 0;
-}
-</style>
+{% block content_title %}
+<div class="login-brand">
+    <div class="brand-mark{% if site_logo_url %} brand-mark--logo{% endif %}">{% if site_logo_url %}<img src="{{ site_logo_url }}" alt="FPL Bhaktapur logo">{% else %}F{% endif %}</div>
+    <h1>FPL Bhaktapur</h1>
+    <p>Control Center</p>
+</div>
 {% endblock %}

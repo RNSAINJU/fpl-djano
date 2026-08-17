@@ -7,8 +7,73 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const toggle = document.getElementById('sidebar-toggle');
     if (sidebar && toggle) {
+        // Keep the sidebar's own scroll position consistent across page
+        // navigations - without this, clicking a link partway down the nav
+        // list lands you back at the top of the sidebar on the new page.
+        try {
+            const savedScroll = sessionStorage.getItem('sidebarScrollTop');
+            if (savedScroll !== null) {
+                sidebar.scrollTop = parseInt(savedScroll, 10) || 0;
+            }
+        } catch (err) {
+            // sessionStorage unavailable (e.g. private browsing) - ignore.
+        }
+
+        sidebar.addEventListener('scroll', () => {
+            try {
+                sessionStorage.setItem('sidebarScrollTop', sidebar.scrollTop);
+            } catch (err) {
+                // ignore
+            }
+        }, { passive: true });
+
+        const overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        document.body.appendChild(overlay);
+
+        toggle.setAttribute('aria-expanded', 'false');
+
+        const openSidebar = () => {
+            sidebar.classList.add('is-open');
+            overlay.classList.add('is-visible');
+            toggle.setAttribute('aria-expanded', 'true');
+            document.body.classList.add('sidebar-lock');
+        };
+
+        const closeSidebar = () => {
+            sidebar.classList.remove('is-open');
+            overlay.classList.remove('is-visible');
+            toggle.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('sidebar-lock');
+        };
+
         toggle.addEventListener('click', () => {
-            sidebar.classList.toggle('is-open');
+            if (sidebar.classList.contains('is-open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+
+        overlay.addEventListener('click', closeSidebar);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && sidebar.classList.contains('is-open')) {
+                closeSidebar();
+            }
+        });
+
+        sidebar.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', () => {
+                try {
+                    sessionStorage.setItem('sidebarScrollTop', sidebar.scrollTop);
+                } catch (err) {
+                    // ignore
+                }
+                if (window.matchMedia('(max-width: 1020px)').matches) {
+                    closeSidebar();
+                }
+            });
         });
     }
 
@@ -47,25 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const pageType = leagueMain.getAttribute('data-league-page');
         const endpoint = leagueMain.getAttribute('data-live-endpoint');
 
-        const sourceLabel = (source) => {
-            if (source === 'live') {
-                return 'Live FPL code 6232';
-            }
-            if (source === 'local') {
-                return 'Local fallback data';
-            }
-            return 'No data source';
-        };
-
         const setSharedMeta = (payload) => {
             const name = document.querySelector('[data-league-name]');
             if (name) {
                 name.textContent = payload.league_name || 'FPL League 6232';
-            }
-
-            const source = document.querySelector('[data-source-badge]');
-            if (source) {
-                source.textContent = sourceLabel(payload.league_source);
             }
 
             const error = document.querySelector('[data-league-error]');
@@ -179,7 +229,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 winnerTeam.textContent = winner ? winner.team_name : '-';
             }
             if (winnerScore) {
-                winnerScore.textContent = winner ? winner.monthly_score : '0';
+                winnerScore.textContent = winner ? winner.monthly_points : '0';
+            }
+
+            const monthLabel = payload.monthly.selected_month_label;
+            if (monthLabel) {
+                ['[data-monthly-month-label]', '[data-monthly-spotlight-label]', '[data-monthly-ranking-label]'].forEach((sel) => {
+                    const el = document.querySelector(sel);
+                    if (el) {
+                        el.textContent = monthLabel;
+                    }
+                });
             }
 
             const tbody = document.querySelector('[data-monthly-rows]');
@@ -189,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const rows = payload.monthly.rankings || [];
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="4">No rankings available yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6">No rankings available yet.</td></tr>';
                 return;
             }
 
@@ -199,49 +259,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>#${row.rank}</td>
                         <td>${row.manager_name}</td>
                         <td>${row.team_name}</td>
-                        <td>${row.monthly_score}</td>
+                        <td>#${row.league_rank}</td>
+                        <td>${row.monthly_hits ? `-${row.monthly_hits}` : '0'}</td>
+                        <td>${row.monthly_points}</td>
                     </tr>
                 `)
                 .join('');
         };
 
-        const renderChase = (payload) => {
-            const safeLine = document.querySelector('[data-chase-safe-line]');
-            if (safeLine) {
-                safeLine.textContent = `Safe line ${payload.chase.safe_line_points} pts`;
-            }
-
-            const tbody = document.querySelector('[data-chase-rows]');
-            if (!tbody) {
-                return;
-            }
-
-            const rows = payload.chase.rows || [];
-            if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="5">No chase data available yet.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = rows
-                .map((row) => {
-                    const gap = row.gap > 0 ? `+${row.gap}` : `${row.gap}`;
-                    const statusClass = row.status === 'Safe' ? 'status-pill--safe' : 'status-pill--chasing';
-                    return `
-                        <tr>
-                            <td>#${row.rank}</td>
-                            <td>${row.manager_name}</td>
-                            <td>${row.total_points}</td>
-                            <td>${gap}</td>
-                            <td><span class="status-pill ${statusClass}">${row.status}</span></td>
-                        </tr>
-                    `;
-                })
-                .join('');
-        };
-
         const refreshLeaguePage = async () => {
             try {
-                const response = await fetch(endpoint, {
+                let requestUrl = endpoint;
+                if (pageType === 'monthly') {
+                    const monthSelect = document.getElementById('month-select');
+                    if (monthSelect && monthSelect.value) {
+                        requestUrl += (requestUrl.includes('?') ? '&' : '?') + 'month=' + encodeURIComponent(monthSelect.value);
+                    }
+                }
+                const response = await fetch(requestUrl, {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
                     }
@@ -259,8 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderGameweek(payload);
                 } else if (pageType === 'monthly') {
                     renderMonthly(payload);
-                } else if (pageType === 'chase') {
-                    renderChase(payload);
                 }
             } catch (err) {
                 // Silent fail: keep server-rendered content if polling fails.

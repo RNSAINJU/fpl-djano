@@ -1,0 +1,121 @@
+{% load i18n static %}<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
+<html lang="{{ LANGUAGE_CODE|default:"en-us" }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% block stylesheet %}{% static "admin/css/base.css" %}{% endblock %}">
+{% block extrastyle %}{% endblock %}
+{% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% block stylesheet_rtl %}{% static "admin/css/rtl.css" %}{% endblock %}">{% endif %}
+<link rel="stylesheet" href="{% static 'fantasy/css/admin_theme.css' %}?v=20260816a">
+{% block extrahead %}{% endblock %}
+{% block responsive %}
+    <link rel="stylesheet" href="{% static "admin/css/responsive.css" %}">
+    {% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% static "admin/css/responsive_rtl.css" %}">{% endif %}
+{% endblock %}
+{% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
+</head>
+
+<body class="admin-shell {% block bodyclass %}{% endblock %}" data-admin-utc-offset="{% now "Z" %}">
+<a href="#content-start" class="skip-link">{% translate 'Skip to main content' %}</a>
+
+<div class="app-shell">
+    {% if user.is_authenticated and has_permission %}
+    <aside class="sidebar" id="admin-sidebar">
+        <div class="brand-block">
+            <div class="brand-mark{% if site_logo_url %} brand-mark--logo{% endif %}">{% if site_logo_url %}<img src="{{ site_logo_url }}" alt="FPL Bhaktapur logo">{% else %}F{% endif %}</div>
+            <div>
+                <h1>{% block branding %}<a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a>{% endblock %}</h1>
+                <p>Control Center</p>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <p class="nav-label">Overview</p>
+            <a href="{% url 'admin:index' %}" class="{% if not opts %}active{% endif %}">Dashboard</a>
+            {% for app in available_apps %}
+                {% if forloop.first %}<p class="nav-label">Manage</p>{% endif %}
+                {% for model in app.models %}
+                {% if model.admin_url %}
+                <a href="{{ model.admin_url }}" class="{% if opts and model.object_name|lower == opts.model_name %}active{% endif %}">{{ model.name }}</a>
+                {% endif %}
+                {% endfor %}
+            {% endfor %}
+            <p class="nav-label">Account</p>
+            <a href="/">&lsaquo; Back to site</a>
+            {% if user.has_usable_password %}
+            <a href="{% url 'admin:password_change' %}">Change password</a>
+            {% endif %}
+            <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="sidebar-logout">Log out</button>
+            </form>
+        </nav>
+    </aside>
+    {% endif %}
+
+    <div class="main-panel">
+        <header class="topbar">
+            {% if user.is_authenticated and has_permission %}
+            <button class="sidebar-toggle" id="admin-sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+            {% endif %}
+            <h2>{% firstof subtitle title site_title %}</h2>
+            {% if user.is_authenticated and has_permission %}
+            <span class="topbar-user">{% translate 'Welcome,' %} {% firstof user.get_short_name user.get_username %}</span>
+            {% endif %}
+        </header>
+
+        <main id="content-start" class="main-content" tabindex="-1">
+            {% block messages %}
+              {% if messages %}
+                <ul class="messagelist">{% for message in messages %}
+                  <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message|capfirst }}</li>
+                {% endfor %}</ul>
+              {% endif %}
+            {% endblock messages %}
+
+            {% if not is_popup %}
+            {% block nav-breadcrumbs %}
+              <nav class="admin-breadcrumbs" aria-label="{% translate 'Breadcrumbs' %}">
+                {% block breadcrumbs %}
+                  <div class="breadcrumbs">
+                    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+                    {% if title %} &rsaquo; {{ title }}{% endif %}
+                  </div>
+                {% endblock %}
+              </nav>
+            {% endblock %}
+            {% endif %}
+
+            <section class="admin-card">
+                {% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
+                {% block content_subtitle %}{% if subtitle %}<h2>{{ subtitle }}</h2>{% endif %}{% endblock %}
+                <div class="admin-card-inner">
+                {% block content %}
+                    {% block object-tools %}{% endblock %}
+                    {{ content }}
+                {% endblock %}
+                {% block sidebar %}{% endblock %}
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+{% block extrabody %}{% endblock extrabody %}
+<script>
+(function () {
+    var toggle = document.getElementById('admin-sidebar-toggle');
+    var sidebar = document.getElementById('admin-sidebar');
+    if (!toggle || !sidebar) { return; }
+    toggle.addEventListener('click', function () {
+        var expanded = sidebar.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+})();
+</script>
+</body>
+</html>

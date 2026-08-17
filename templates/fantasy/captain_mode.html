@@ -6,33 +6,31 @@
 <div class="app-shell">
     <aside class="sidebar" id="sidebar">
         <div class="brand-block">
-            <div class="brand-mark">F</div>
+            <div class="brand-mark{% if site_logo_url %} brand-mark--logo{% endif %}">{% if site_logo_url %}<img src="{{ site_logo_url }}" alt="FPL Bhaktapur logo">{% else %}F{% endif %}</div>
             <div>
-                <h1>FPL Nepal</h1>
-                <p>Webapp</p>
+                <h1>FPL Bhaktapur</h1>
             </div>
         </div>
         <nav class="sidebar-nav">
             <p class="nav-label">Main</p>
             <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
-            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
-            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+            <a href="{% url 'fantasy:home' %}#dashboard">Dashboard</a>
             <a href="{% url 'fantasy:home' %}#top-picks">Players</a>
             <a href="{% url 'fantasy:home' %}#fixtures">Compare</a>
             <a href="{% url 'fantasy:home' %}#standings">History</a>
-            <p class="nav-label">FPL Nepal</p>
+            <p class="nav-label">FPL Bhaktapur</p>
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
+            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
             <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
             <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
             <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
-            <a class="{% if active_page == 'the_chase' %}active{% endif %}" href="{% url 'fantasy:the_chase' %}">The Chase</a>
-            <a href="/control-center/">Admin Portal</a>
         </nav>
     </aside>
 
     <div class="main-panel">
         <header class="topbar">
             <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
-            <h2>Fantasy Premier League Nepal</h2>
+            <h2>FPL Bhaktapur</h2>
             <a class="topbar-button" href="{% url 'fantasy:live_gameweek' %}">Go to live tracker</a>
         </header>
 
@@ -45,37 +43,57 @@
                 <span class="chip">Deadline {{ deadline_display }}</span>
             </section>
 
-            <section class="status-grid">
-                <article class="tracker-card reveal tracker-card--wide">
-                    <h4>Pick best captain from your squad</h4>
-                    <p>Enter your FPL ID. We rank your players using form, points per game, ICT index, minutes, and availability.</p>
-                    <form class="tracker-form" method="get" action="{% url 'fantasy:captain_mode' %}">
-                        <label for="entry-id">Your FPL ID</label>
-                        <input id="entry-id" type="text" name="entry_id" value="{{ entry_id }}" inputmode="numeric" pattern="[0-9]+" placeholder="e.g. 1234567" required>
-                        <button type="submit">Analyze captain</button>
-                    </form>
-                    {% if saved_message %}
-                    <p class="save-note">{{ saved_message }}</p>
-                    {% endif %}
-                    {% if captain_error %}
-                    <p class="inline-error">{{ captain_error }}</p>
-                    {% endif %}
-                </article>
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4 data-league-name>{{ league_name }}</h4>
+                </header>
+            </section>
 
-                <article class="season-card reveal">
-                    <div class="ball-icon">C</div>
-                    <h4>{{ season_message }}</h4>
-                    <p>Captain recommendations are recalculated from your latest squad and current FPL stats.</p>
-                    <div class="countdown" data-target="{{ deadline_iso }}">
-                        <div><strong data-count="days">00</strong><span>Days</span></div>
-                        <div><strong data-count="hours">00</strong><span>Hrs</span></div>
-                        <div><strong data-count="minutes">00</strong><span>Min</span></div>
-                        <div><strong data-count="seconds">00</strong><span>Sec</span></div>
-                    </div>
-                </article>
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Captain Points Leaderboard</h4>
+                    <span>{{ leaderboard_status|default:'Season total' }}</span>
+                </header>
+                <p class="info-note"><strong>How this is chosen:</strong> for every finished gameweek this season, each manager's captain earns their points multiplied by the captain multiplier (x2 normally, x3 with Triple Captain), added up across the whole season. The currently in-progress gameweek (if any) is fetched live and added on top. Ranked highest total first.</p>
+                <p class="inline-error {% if not leaderboard_error %}is-hidden{% endif %}">{{ leaderboard_error|default:'' }}</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>Captain</th>
+                                <th>Total Captain Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in captain_leaderboard %}
+                            <tr>
+                                <td>#{{ row.rank }}</td>
+                                <td>{{ row.manager_name }}</td>
+                                <td>{{ row.team_name }}</td>
+                                <td>{{ row.captain_name }}</td>
+                                <td>{{ row.captain_points }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5">No captain data available yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             {% if captain_data %}
+            <div class="info-note">
+                <strong>How the recommendation is chosen:</strong> every player in your squad gets a weighted captain score built from form, points per game, ICT index, goals, assists, clean sheets (extra weight for defenders/keepers), selection %, and minutes played, with a bonus for attacking positions.
+                <ul>
+                    <li>The score is then scaled down for injury/rotation doubt &mdash; a player flagged as 50% likely to play has their score halved.</li>
+                    <li>Highest score becomes the <strong>Recommended Captain</strong>, second-highest becomes the <strong>Vice Captain</strong>.</li>
+                </ul>
+            </div>
             <section class="insight-grid">
                 <article class="card reveal">
                     <header class="card-header">

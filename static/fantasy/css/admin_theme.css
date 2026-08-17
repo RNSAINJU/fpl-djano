@@ -1,0 +1,748 @@
+/* FPL Bhaktapur - Control Center theme
+   Reskins Django admin using the real Fantasy Premier League brand palette
+   (deep purple #37003c + signature neon green #00ff87), sampled directly
+   from fantasy.premierleague.com rather than an invented color scheme.
+   Note: green is only ever used as a background/accent paired with dark
+   text - FPL itself never sets green as body/link text color, since bright
+   green on white fails contrast. */
+
+/* ---- 1. Take over Django admin's own CSS variables ---- */
+:root,
+html[data-theme="light"] {
+    --primary: #37003c;
+    --secondary: #4a0a4f;
+    --accent: #00ff87;
+    --primary-fg: #fff;
+
+    --body-fg: #131225;
+    --body-bg: #f4f4f7;
+    --body-quiet-color: #67627b;
+    --body-medium-color: #4f496b;
+    --body-loud-color: #131225;
+
+    --header-color: #fff;
+    --header-branding-color: #fff;
+    --header-bg: #37003c;
+    --header-link-color: #fff;
+
+    --breadcrumbs-fg: #d9c7de;
+    --breadcrumbs-link-fg: #fff;
+    --breadcrumbs-bg: #26002b;
+
+    --link-fg: #37003c;
+    --link-hover-color: #00a656;
+    --link-selected-fg: #37003c;
+
+    --hairline-color: #e3dbe4;
+    --border-color: #e3dbe4;
+
+    --error-fg: #d74747;
+
+    --message-success-bg: #e2f7ea;
+    --message-info-bg: #e6f0fb;
+    --message-warning-bg: #fdf3d6;
+    --message-error-bg: #fbe6e6;
+
+    --darkened-bg: #faf8fa;
+    --selected-bg: #f1ecf2;
+    --selected-row: #e6fff3;
+
+    --button-fg: #fff;
+    --button-bg: #37003c;
+    --button-hover-bg: #26002b;
+    --default-button-bg: #00ff87;
+    --default-button-hover-bg: #00e07a;
+    --close-button-bg: #948fa7;
+    --close-button-hover-bg: #67627b;
+    --delete-button-bg: #d74747;
+    --delete-button-hover-bg: #b83333;
+
+    --object-tools-fg: #fff;
+    --object-tools-bg: #37003c;
+    --object-tools-hover-bg: #26002b;
+
+    --font-family-primary: 'Outfit', sans-serif;
+}
+
+/* Force the light palette above even if the OS prefers dark, so the
+   admin always matches the (light-only) public site look. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --primary: #37003c;
+        --secondary: #4a0a4f;
+        --body-fg: #131225;
+        --body-bg: #f4f4f7;
+        --header-bg: #37003c;
+        --link-fg: #37003c;
+        --button-bg: #37003c;
+    }
+}
+
+/* Django's own .default button rule only swaps the background, not the
+   text color - and white text on the bright green default background
+   would fail contrast, so it needs its own dark-text override. */
+.button.default, input[type=submit].default, .submit-row input.default {
+    color: #04231a !important;
+}
+
+/* ---- 2. App shell layout (mirrors the public site's sidebar) ---- */
+* {
+    box-sizing: border-box;
+}
+
+body.admin-shell {
+    margin: 0;
+    background: #f4f4f7;
+    font-family: 'Outfit', sans-serif;
+}
+
+.skip-link {
+    position: absolute;
+    left: -999px;
+    top: 0;
+    z-index: 99;
+    background: #fff;
+    color: #111;
+    padding: 8px 10px;
+}
+
+.skip-link:focus {
+    left: 10px;
+}
+
+.app-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+}
+
+body.login .app-shell {
+    display: block;
+}
+
+.sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #4a0a4f, #1a001d);
+    color: #fff;
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.brand-block {
+    padding: 20px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(130deg, #37003c, #00ff87);
+    display: grid;
+    place-items: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.brand-mark--logo {
+    background: #fff;
+    padding: 3px;
+}
+
+.brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+}
+
+.brand-block h1 {
+    margin: 0;
+    font-size: 20px;
+    font-family: 'Space Grotesk', sans-serif;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.brand-block h1 a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.brand-block p {
+    margin: 3px 0 0;
+    color: #d9c7de;
+    font-size: 13px;
+}
+
+.sidebar-nav {
+    padding: 12px 10px 24px;
+    display: grid;
+    gap: 4px;
+}
+
+.nav-label {
+    margin: 14px 10px 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.1rem;
+    font-size: 11px;
+    color: #c2a8c5;
+}
+
+.sidebar-nav a {
+    display: block;
+    color: #f6eef7;
+    text-decoration: none;
+    padding: 11px 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    line-height: 1.4;
+    border-left: 3px solid transparent;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.sidebar-nav a:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.sidebar-nav a.active {
+    background: rgba(0, 255, 135, 0.14);
+    border-left-color: #00ff87;
+    color: #fff;
+    font-weight: 600;
+}
+
+.sidebar-logout {
+    width: 100%;
+    text-align: left;
+    display: block;
+    color: #ffb3b3;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 11px 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: 'Outfit', sans-serif;
+    margin-top: 6px;
+}
+
+.sidebar-logout:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.main-panel {
+    min-width: 0;
+}
+
+.topbar {
+    min-height: 72px;
+    background: #37003c;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 24px;
+    flex-wrap: wrap;
+    border-bottom: 3px solid #00ff87;
+}
+
+.topbar h2 {
+    margin: 0;
+    font-size: 20px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topbar-user {
+    color: #e8d6ea;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.sidebar-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 8px 12px;
+    min-width: 44px;
+    min-height: 40px;
+    cursor: pointer;
+}
+
+.main-content {
+    padding: 22px;
+    display: block;
+}
+
+.admin-breadcrumbs {
+    margin-bottom: 14px;
+}
+
+.admin-breadcrumbs .breadcrumbs {
+    color: #948fa7;
+    font-size: 13px;
+    background: none;
+    padding: 0;
+}
+
+.admin-breadcrumbs .breadcrumbs a {
+    color: #37003c;
+    text-decoration: none;
+}
+
+.admin-breadcrumbs .breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+.admin-card {
+    background: #fff;
+    border: 1px solid #e3dbe4;
+    border-radius: 20px;
+    padding: 24px;
+    overflow-x: auto;
+    box-shadow: 0 2px 8px rgba(19, 18, 37, 0.05);
+}
+
+.admin-card > h1,
+.admin-card-inner > h1 {
+    margin-top: 0;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
+}
+
+/* ---- 3. Messages ---- */
+.messagelist {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.messagelist li {
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    background: #e6f0fb;
+    border-left: 4px solid #2d81d0;
+    color: #131225;
+}
+
+.messagelist li.success {
+    background: #e2f7ea;
+    border-left-color: #00a656;
+}
+
+.messagelist li.warning {
+    background: #fdf3d6;
+    border-left-color: #c99a1c;
+}
+
+.messagelist li.error {
+    background: #fbe6e6;
+    border-left-color: #d74747;
+}
+
+/* ---- 4. Buttons, links, tables, forms ---- */
+
+/* Django underlines most links by default for accessibility, except inside
+   #header/#nav-sidebar/.object-tools/app-list. Our custom chrome uses
+   different container names, so it falls outside that exemption list and
+   gets underlined too - opt our own chrome out explicitly instead. */
+.sidebar a,
+.topbar a,
+.login-brand a,
+.quick-action-btn,
+.admin-breadcrumbs .breadcrumbs a {
+    text-decoration: none !important;
+}
+
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    border-radius: 10px !important;
+    font-family: 'Outfit', sans-serif;
+    text-transform: none !important;
+    font-weight: 600;
+}
+
+.object-tools a {
+    border-radius: 10px !important;
+    font-family: 'Outfit', sans-serif;
+}
+
+#changelist table thead th {
+    background: #faf8fa;
+}
+
+#changelist .results {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e3dbe4;
+}
+
+.paginator {
+    border-radius: 12px;
+}
+
+div.breadcrumbs {
+    border-radius: 0;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    background: #37003c;
+    border-radius: 8px 8px 0 0;
+}
+
+.module caption a.section {
+    color: #fff !important;
+    font-weight: 600;
+    letter-spacing: 0.02rem;
+    text-decoration: none !important;
+}
+
+.module {
+    border: 1px solid #e3dbe4;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(19, 18, 37, 0.04);
+}
+
+.module table {
+    width: 100%;
+}
+
+.module tbody th {
+    padding: 12px 16px;
+    font-weight: 500;
+}
+
+.module tbody th a {
+    text-decoration: none !important;
+    color: #37003c;
+    font-weight: 600;
+}
+
+.module tbody tr {
+    border-bottom: 1px solid #f1e8f2;
+    transition: background 0.15s ease;
+}
+
+.module tbody tr:last-child {
+    border-bottom: 0;
+}
+
+.module tbody tr:hover {
+    background: #faf8fa;
+}
+
+.module tbody td {
+    padding: 12px 16px;
+}
+
+.addlink, .changelink, .viewlink {
+    text-decoration: none !important;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+fieldset.module {
+    border: 1px solid #e3dbe4;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.form-row {
+    border-bottom-color: #efe6f0;
+}
+
+.errorlist {
+    color: #d74747;
+}
+
+input[type=text], input[type=password], input[type=email], input[type=url],
+input[type=number], textarea, select, .vTextField {
+    border-radius: 8px !important;
+    border-color: #e3dbe4 !important;
+    font-family: 'Outfit', sans-serif;
+}
+
+/* ---- 5. Dashboard quick-links / stat cards (fantasy_index / fantasy_dashboard) ---- */
+.quick-stats-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-bottom: 20px;
+}
+
+.quick-stat-card {
+    background: linear-gradient(120deg, rgba(55, 0, 60, 0.94), rgba(0, 143, 82, 0.9));
+    color: #fff;
+    border-radius: 16px;
+    padding: 18px 20px;
+}
+
+.quick-stat-card strong {
+    display: block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 30px;
+    line-height: 1.1;
+}
+
+.quick-stat-card span {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+a.quick-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(120deg, #37003c, #5c1568);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 4px 12px rgba(55, 0, 60, 0.3);
+}
+
+a.quick-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(55, 0, 60, 0.4);
+}
+
+a.quick-action-btn--accent {
+    background: linear-gradient(120deg, #00b368, #00ff87);
+    color: #04231a;
+    box-shadow: 0 4px 12px rgba(0, 179, 104, 0.3);
+}
+
+a.quick-action-btn--accent:hover {
+    box-shadow: 0 6px 18px rgba(0, 179, 104, 0.4);
+}
+
+a.quick-action-btn--ghost {
+    background: #fff;
+    color: #37003c;
+    border: 1px solid #e3dbe4;
+    box-shadow: none;
+}
+
+a.quick-action-btn--ghost:hover {
+    background: #faf8fa;
+    box-shadow: 0 4px 10px rgba(19, 18, 37, 0.06);
+}
+
+.quick-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.portal-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portal-card {
+    background: #faf8fa;
+    border: 1px solid #e3dbe4;
+    border-radius: 16px;
+    padding: 18px;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.portal-card:hover {
+    box-shadow: 0 6px 16px rgba(19, 18, 37, 0.08);
+    transform: translateY(-2px);
+}
+
+.portal-card h2 {
+    margin: 0 0 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 17px;
+}
+
+.portal-kpi {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.portal-kpi strong {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+    color: #37003c;
+}
+
+.portal-kpi span {
+    color: #67627b;
+    font-size: 14px;
+}
+
+.portal-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.portal-list li {
+    padding: 9px 0;
+    border-bottom: 1px solid #efe6f0;
+    font-size: 14px;
+    color: #4f496b;
+}
+
+.portal-list li:last-child {
+    border-bottom: 0;
+}
+
+.portal-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+    .portal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---- 6. Login page: standalone centered card, no sidebar ---- */
+body.login {
+    background: radial-gradient(circle at 14% 14%, #4a0a4f 0%, #26002b 34%, #14001a 100%);
+    min-height: 100vh;
+}
+
+body.login .topbar,
+body.login .admin-breadcrumbs {
+    display: none;
+}
+
+body.login .main-panel {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.login .main-content {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+}
+
+body.login .admin-card {
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 14px 34px rgba(5, 2, 10, 0.45);
+    background: #1c0930;
+    color: #f5e8fc;
+}
+
+body.login .admin-card label {
+    color: #e8d6ea;
+}
+
+body.login .errornote {
+    border-radius: 10px;
+}
+
+body.login .submit-row input {
+    width: 100%;
+    border-radius: 10px !important;
+    background: linear-gradient(120deg, #00b368, #00ff87);
+    color: #04231a !important;
+    border: 0;
+}
+
+.login-brand {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.login-brand .brand-mark {
+    margin: 0 auto 10px;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    font-size: 22px;
+}
+
+.login-brand .brand-mark--logo {
+    padding: 5px;
+}
+
+.login-brand h1 {
+    margin: 0;
+    font-size: 22px;
+    font-family: 'Space Grotesk', sans-serif;
+    color: #fff;
+}
+
+.login-brand p {
+    margin: 6px 0 0;
+    color: #d9c7de;
+    font-size: 14px;
+}
+
+/* ---- 7. Responsive ---- */
+@media (max-width: 900px) {
+    .app-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 260px;
+        transform: translateX(-100%);
+        transition: transform 0.2s ease;
+        z-index: 40;
+        box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.4);
+    }
+
+    .sidebar-toggle {
+        display: inline-flex;
+    }
+
+    .main-content {
+        padding: 16px;
+    }
+
+    .admin-card {
+        padding: 16px;
+    }
+}
