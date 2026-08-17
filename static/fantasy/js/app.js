@@ -75,6 +75,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+
+        // If the viewport grows back past the mobile breakpoint (e.g. a
+        // rotation or window resize) while the mobile nav is open, close it
+        // rather than leaving it stuck open in the now-desktop layout.
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1020 && sidebar.classList.contains('is-open')) {
+                closeSidebar();
+            }
+        });
     }
 
     const countdown = document.querySelector('.countdown[data-target]');

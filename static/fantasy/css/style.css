@@ -815,7 +815,7 @@ td small {
         width: min(280px, 82vw);
         transform: translateX(-102%);
         transition: transform 0.25s ease;
-        z-index: 20;
+        z-index: 30;
     }
 
     .sidebar.is-open {
