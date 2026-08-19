@@ -1218,27 +1218,40 @@ td small {
         word-break: break-word;
     }
 
-    /* Equal-fifths (or -sixths, -sevenths...) column widths left short
-       single-word headers like "MANAGER" without room to fit on one line,
-       forcing an ugly mid-word break even though multi-word headers like
-       "TOTAL CAPTAIN PTS" wrapped fine at their natural spaces. Every
-       table on the site puts a short identifier first (rank/gameweek/
-       month), then the manager/player name, then team - so give those two
-       name-heavy columns more room and let the narrow stat columns that
-       follow share what's left. */
+    /* Headers are our own short, known text - not unpredictable user data
+       like a long manager name - so they should wrap at word boundaries
+       ("Total" / "Points") like "Total Captain Pts" already did, never
+       force-break mid-word ("TOTA" / "L") the way inherited word-break:
+       break-word was doing for every narrow stat column. Drop the
+       uppercase letter-spacing and tighten padding on mobile too - tables
+       with more than 4 columns (e.g. "League Pos" / "Monthly Points") were
+       still a few px too tight to wrap onto two lines cleanly otherwise. */
+    th {
+        font-size: 10px;
+        padding: 8px 3px;
+        letter-spacing: 0;
+        word-break: normal;
+        overflow-wrap: normal;
+    }
+
+    /* Equal-share column widths also left the name-heavy columns short of
+       room. Every table on the site puts a short identifier first (rank/
+       gameweek/month), then the manager/player name, then team - so give
+       those two more room and let the narrow stat columns that follow
+       share what's left. */
     th:first-child,
     td:first-child {
-        width: 14%;
+        width: 11%;
     }
 
     th:nth-child(2),
     td:nth-child(2) {
-        width: 27%;
+        width: 22%;
     }
 
     th:nth-child(3),
     td:nth-child(3) {
-        width: 22%;
+        width: 17%;
     }
 }
 
