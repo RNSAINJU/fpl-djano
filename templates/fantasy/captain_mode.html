@@ -50,7 +50,7 @@
                     <h4>Captain Points Leaderboard</h4>
                     <span>{{ leaderboard_status|default:'Season total' }}</span>
                 </header>
-                <p class="info-note"><strong>How this is chosen:</strong> for every finished gameweek this season, each manager's captain earns their points multiplied by the captain multiplier (x2 normally, x3 with Triple Captain), added up across the whole season. The currently in-progress gameweek (if any) is fetched live and added on top. Ranked highest total first.</p>
+                <p class="info-note">{{ captain_leaderboard_note|safe }}</p>
                 <p class="inline-error {% if not leaderboard_error %}is-hidden{% endif %}">{{ leaderboard_error|default:'' }}</p>
                 <div class="table-wrap">
                     <table>
@@ -83,13 +83,7 @@
             </section>
 
             {% if captain_data %}
-            <div class="info-note">
-                <strong>How the recommendation is chosen:</strong> every player in your squad gets a weighted captain score built from form, points per game, ICT index, goals, assists, clean sheets (extra weight for defenders/keepers), selection %, and minutes played, with a bonus for attacking positions.
-                <ul>
-                    <li>The score is then scaled down for injury/rotation doubt &mdash; a player flagged as 50% likely to play has their score halved.</li>
-                    <li>Highest score becomes the <strong>Recommended Captain</strong>, second-highest becomes the <strong>Vice Captain</strong>.</li>
-                </ul>
-            </div>
+            <div class="info-note">{{ captain_recommendation_note|safe }}</div>
             <section class="insight-grid">
                 <article class="card reveal">
                     <header class="card-header">

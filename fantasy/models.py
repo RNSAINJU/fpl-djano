@@ -132,14 +132,61 @@ class LeagueEntry(models.Model):
 
 
 class SiteSettings(models.Model):
-	"""Singleton row holding site-wide branding. Always saved/loaded at
-	pk=1 so there's exactly one place to manage the logo shown across the
-	public site and the admin panel."""
+	"""Singleton row holding site-wide branding and editable explanation
+	text. Always saved/loaded at pk=1 so there's exactly one place to
+	manage the logo and page copy shown across the public site and the
+	admin panel."""
 	logo = models.ImageField(
 		upload_to='branding/',
 		blank=True,
 		null=True,
 		help_text='Shown in the sidebar/brand mark across the site and admin. Square-ish images work best.',
+	)
+	captain_leaderboard_note = models.TextField(
+		blank=True,
+		default=(
+			"<strong>How this is chosen:</strong> for every finished gameweek this season, each manager's "
+			"captain earns their points multiplied by the captain multiplier (x2 normally, x3 with Triple "
+			"Captain), added up across the whole season. The currently in-progress gameweek (if any) is "
+			"fetched live and added on top. Ranked highest total first."
+		),
+		help_text=(
+			'Shown under "Captain Points Leaderboard" on the Captain Mode page. Basic HTML '
+			'(e.g. <strong>, <em>, <ul><li>) is allowed.'
+		),
+	)
+	captain_recommendation_note = models.TextField(
+		blank=True,
+		default=(
+			'<strong>How the recommendation is chosen:</strong> every player in your squad gets a weighted '
+			'captain score built from form, points per game, ICT index, goals, assists, clean sheets (extra '
+			'weight for defenders/keepers), selection %, and minutes played, with a bonus for attacking '
+			'positions.\n'
+			'<ul>\n'
+			'<li>The score is then scaled down for injury/rotation doubt &mdash; a player flagged as 50% '
+			'likely to play has their score halved.</li>\n'
+			'<li>Highest score becomes the <strong>Recommended Captain</strong>, second-highest becomes the '
+			'<strong>Vice Captain</strong>.</li>\n'
+			'</ul>'
+		),
+		help_text=(
+			'Shown on the Captain Mode page once a personal squad is loaded, explaining the recommendation. '
+			'Basic HTML (e.g. <strong>, <em>, <ul><li>) is allowed.'
+		),
+	)
+	monthly_winner_note = models.TextField(
+		blank=True,
+		default=(
+			"<strong>How the winner is chosen:</strong> for every gameweek whose deadline falls in the "
+			"selected month, we add up each manager's gameweek points minus any transfer hit cost taken "
+			"that gameweek: <strong>&Sigma; (GW points &minus; transfer hits)</strong>. Finished gameweeks "
+			"are read from stored results; the current in-progress gameweek (if it falls in the selected "
+			"month) is added live. Highest total for the month wins."
+		),
+		help_text=(
+			'Shown under the month picker on the Manager of the Month page. Basic HTML '
+			'(e.g. <strong>, <em>, <ul><li>) is allowed.'
+		),
 	)
 	updated_at = models.DateTimeField(auto_now=True)
 

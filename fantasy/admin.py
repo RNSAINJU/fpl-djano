@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.admin import AdminSite
+from django.db import models
 from django.template.response import TemplateResponse
 from django.shortcuts import redirect
 from django.urls import path
@@ -109,8 +110,18 @@ class PageAdvertisementAdmin(admin.ModelAdmin):
 class SiteSettingsAdmin(admin.ModelAdmin):
 	fieldsets = (
 		('Logo', {'fields': ('logo', 'updated_at'), 'description': 'Upload once - it appears in the sidebar across the whole site and this admin.'}),
+		(
+			'Explanation text',
+			{
+				'fields': ('captain_leaderboard_note', 'captain_recommendation_note', 'monthly_winner_note'),
+				'description': 'The "How this is chosen" notes shown on Captain Mode and Manager of the Month. Basic HTML is allowed.',
+			},
+		),
 	)
 	readonly_fields = ('updated_at',)
+	formfield_overrides = {
+		models.TextField: {'widget': admin.widgets.AdminTextareaWidget(attrs={'rows': 6, 'style': 'width: 100%; max-width: 640px;'})},
+	}
 
 	def has_add_permission(self, request):
 		# Singleton: only ever one row (pk=1), created on demand.
@@ -127,17 +138,22 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 
 class CaptainGameweekScoreAdmin(admin.ModelAdmin):
 	list_display = ('gameweek', 'manager_name', 'team_name', 'gameweek_points', 'event_transfers_cost', 'captain_name', 'captain_points')
+	list_editable = ('gameweek_points', 'event_transfers_cost', 'captain_name', 'captain_points')
 	list_filter = ('gameweek',)
 	search_fields = ('manager_name', 'team_name', 'captain_name')
 	ordering = ('-gameweek', '-captain_points')
 	list_per_page = 200
-	# Backfilled by sync_fpl_data for finished gameweeks only - editing here
-	# would just be overwritten (or ignored, since finished weeks are never
-	# re-fetched) on the next sync.
-	readonly_fields = ('entry_id', 'manager_name', 'team_name', 'gameweek', 'gameweek_points', 'event_transfers_cost', 'captain_name', 'captain_points')
-
-	def has_add_permission(self, request):
-		return False
+	# Backfilled by sync_fpl_data, but only ever for (manager, gameweek)
+	# pairs that don't already have a row - so a manual edit or add here is
+	# safe and permanent, it will never get silently overwritten by a later
+	# sync. This feeds both the Captain Mode season-total leaderboard
+	# (captain_points) and the Manager of the Month leaderboard
+	# (gameweek_points), so editing a row here updates both.
+	fieldsets = (
+		('Manager', {'fields': ('entry_id', 'manager_name', 'team_name', 'gameweek')}),
+		('Gameweek score (feeds Manager of the Month)', {'fields': ('gameweek_points', 'event_transfers_cost')}),
+		('Captain (feeds Captain Mode)', {'fields': ('captain_name', 'captain_points')}),
+	)
 
 
 fantasy_admin_site.register(Player, PlayerAdmin)

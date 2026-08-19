@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="{% block stylesheet %}{% static "admin/css/base.css" %}{% endblock %}">
 {% block extrastyle %}{% endblock %}
 {% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% block stylesheet_rtl %}{% static "admin/css/rtl.css" %}{% endblock %}">{% endif %}
-<link rel="stylesheet" href="{% static 'fantasy/css/admin_theme.css' %}?v=20260816a">
+<link rel="stylesheet" href="{% static 'fantasy/css/admin_theme.css' %}?v={{ admin_static_version }}">
 {% block extrahead %}{% endblock %}
 {% block responsive %}
     <link rel="stylesheet" href="{% static "admin/css/responsive.css" %}">
