@@ -754,6 +754,7 @@ def _fetch_gameweek_leaderboard_live(
 		'winner': None,
 		'available_gameweeks': [],
 		'selected_gameweek': None,
+		'selected_gameweek_finished': False,
 		'gameweek_error': None,
 	}
 	try:
@@ -763,7 +764,12 @@ def _fetch_gameweek_leaderboard_live(
 		next_event = next((event for event in events if event.get('is_next')), None)
 		current_gameweek = current_event.get('id') if current_event else None
 
-		finished_gameweeks = {event['id'] for event in events if event.get('finished')}
+		# Kept separate from available_gameweeks below (which also includes
+		# the current/next gameweek purely so there's something selectable) -
+		# this is the set that actually determines whether a winner can be
+		# revealed yet.
+		truly_finished_gameweeks = {event['id'] for event in events if event.get('finished')}
+		finished_gameweeks = set(truly_finished_gameweeks)
 		reference_gameweek = current_gameweek or (next_event.get('id') if next_event else None)
 		if reference_gameweek:
 			finished_gameweeks.add(reference_gameweek)
@@ -778,6 +784,7 @@ def _fetch_gameweek_leaderboard_live(
 			selected_gameweek = None
 		if selected_gameweek not in available_gameweeks:
 			selected_gameweek = available_gameweeks[-1]
+		selected_gameweek_finished = selected_gameweek in truly_finished_gameweeks
 
 		entry_rows, using_new_entries = _fetch_league_entry_rows(league_id)
 		if not entry_rows:
@@ -785,6 +792,7 @@ def _fetch_gameweek_leaderboard_live(
 				**empty,
 				'available_gameweeks': [{'value': gw, 'label': f'Gameweek {gw}'} for gw in available_gameweeks],
 				'selected_gameweek': selected_gameweek,
+				'selected_gameweek_finished': selected_gameweek_finished,
 				'gameweek_error': 'League fetched, but no members were returned yet.',
 			}
 
@@ -848,9 +856,10 @@ def _fetch_gameweek_leaderboard_live(
 
 		return {
 			'entries': entries[:15],
-			'winner': entries[0] if entries else None,
+			'winner': entries[0] if selected_gameweek_finished and entries else None,
 			'available_gameweeks': [{'value': gw, 'label': f'Gameweek {gw}'} for gw in available_gameweeks],
 			'selected_gameweek': selected_gameweek,
+			'selected_gameweek_finished': selected_gameweek_finished,
 			'gameweek_error': None,
 		}
 	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
@@ -898,6 +907,7 @@ def _fetch_monthly_leaderboard_live(
 		'available_months': [],
 		'selected_month': None,
 		'selected_month_label': None,
+		'selected_month_finished': False,
 		'monthly_error': None,
 	}
 	try:
@@ -927,6 +937,15 @@ def _fetch_monthly_leaderboard_live(
 			selected_month = available_months[-1]
 
 		gameweeks_in_month = [gw for gw, month in gameweek_month_map.items() if month == selected_month]
+		# A month is only "finished" once every gameweek whose deadline falls
+		# in it is actually marked finished by the FPL API - not just "not
+		# currently in progress", since pre-season there's no current
+		# gameweek at all (GW1 is only 'next' until its deadline passes),
+		# which would otherwise make an unstarted month look finished.
+		truly_finished_gameweek_ids = {event['id'] for event in events if event.get('finished')}
+		selected_month_finished = bool(gameweeks_in_month) and all(
+			gw in truly_finished_gameweek_ids for gw in gameweeks_in_month
+		)
 
 		entry_rows, using_new_entries = _fetch_league_entry_rows(league_id)
 		if not entry_rows:
@@ -935,6 +954,7 @@ def _fetch_monthly_leaderboard_live(
 				'available_months': [{'value': m, 'label': _month_label(m)} for m in available_months],
 				'selected_month': selected_month,
 				'selected_month_label': _month_label(selected_month),
+				'selected_month_finished': selected_month_finished,
 				'monthly_error': 'League fetched, but no members were returned yet.',
 			}
 
@@ -998,10 +1018,11 @@ def _fetch_monthly_leaderboard_live(
 
 		return {
 			'monthly_rankings': leaderboard[:15],
-			'monthly_winner': leaderboard[0] if leaderboard else None,
+			'monthly_winner': leaderboard[0] if selected_month_finished and leaderboard else None,
 			'available_months': [{'value': m, 'label': _month_label(m)} for m in available_months],
 			'selected_month': selected_month,
 			'selected_month_label': _month_label(selected_month),
+			'selected_month_finished': selected_month_finished,
 			'monthly_error': None,
 		}
 	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
@@ -1205,12 +1226,14 @@ def league_live_data(request):
 			'winner': gameweek_data['winner'],
 			'entries': gameweek_data['entries'],
 			'selected_gameweek': gameweek_data['selected_gameweek'],
+			'selected_gameweek_finished': gameweek_data['selected_gameweek_finished'],
 		},
 		'monthly': {
 			'winner': monthly_data['monthly_winner'],
 			'rankings': monthly_data['monthly_rankings'],
 			'selected_month': monthly_data['selected_month'],
 			'selected_month_label': monthly_data['selected_month_label'],
+			'selected_month_finished': monthly_data['selected_month_finished'],
 		},
 	}
 	return JsonResponse(response)

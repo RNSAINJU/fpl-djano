@@ -40,19 +40,29 @@
                     <p class="kicker">Monthly Awards</p>
                     <h3>Manager Of The Month</h3>
                 </div>
-                <span class="chip" data-monthly-winner-chip>{% if monthly_winner %}Winner {{ monthly_winner.manager_name }}{% else %}No winner yet{% endif %}</span>
+                <span class="chip" data-monthly-winner-chip>{% if selected_month_finished and monthly_winner %}Winner {{ monthly_winner.manager_name }}{% elif selected_month_finished %}No winner yet{% else %}Still in progress{% endif %}</span>
             </section>
 
-            <section class="winner-spotlight reveal" data-monthly-spotlight>
+            <section class="winner-spotlight reveal{% if not selected_month_finished %} winner-spotlight--sealed{% endif %}" data-monthly-spotlight>
                 <div class="winner-spotlight__badge">🏆</div>
                 <div class="winner-spotlight__body">
                     <p class="winner-spotlight__label" data-monthly-spotlight-label>{{ selected_month_label|default:'This month' }}</p>
-                    <h3 class="winner-spotlight__name" data-monthly-winner-name>{% if monthly_winner %}{{ monthly_winner.manager_name }}{% else %}No winner yet{% endif %}</h3>
-                    <p class="winner-spotlight__team" data-monthly-winner-team>{% if monthly_winner %}{{ monthly_winner.team_name }}{% else %}-{% endif %}</p>
+                    {% if selected_month_finished and monthly_winner %}
+                    <h3 class="winner-spotlight__name" data-monthly-winner-name>{{ monthly_winner.manager_name }}</h3>
+                    <p class="winner-spotlight__team" data-monthly-winner-team>{{ monthly_winner.team_name }}</p>
+                    {% else %}
+                    <h3 class="winner-spotlight__name winner-spotlight__name--sealed" data-monthly-winner-name>Winner revealed when the month's last gameweek finishes</h3>
+                    <p class="winner-spotlight__team" data-monthly-winner-team>Scores are still live - final points aren't in yet.</p>
+                    {% endif %}
                 </div>
                 <div class="winner-spotlight__score">
-                    <strong data-monthly-winner-score>{% if monthly_winner %}{{ monthly_winner.monthly_points }}{% else %}0{% endif %}</strong>
+                    {% if selected_month_finished and monthly_winner %}
+                    <strong data-monthly-winner-score>{{ monthly_winner.monthly_points }}</strong>
                     <span>Monthly points</span>
+                    {% else %}
+                    <strong data-monthly-winner-score>🔒</strong>
+                    <span>Sealed until finished</span>
+                    {% endif %}
                 </div>
             </section>
 
