@@ -709,13 +709,131 @@ def _resolved_league_dataset() -> tuple[list[dict], str, str | None, str]:
 	return [], league_name, live_error or 'No league data available.', 'none'
 
 
-def _build_gameweek_data(rows: list[dict]) -> dict:
-	entries = sorted(rows, key=lambda row: row['gameweek_points'], reverse=True)[:10]
-	winner = entries[0] if entries else None
-	return {
-		'entries': entries,
-		'winner': winner,
+def _fetch_gameweek_leaderboard(
+	league_id: int = FPL_CLASSIC_LEAGUE_ID, selected_gameweek: int | None = None
+) -> dict:
+	return cache.get_or_set(
+		f'fpl:gameweek_leaderboard:{league_id}:{selected_gameweek or "latest"}',
+		lambda: _fetch_gameweek_leaderboard_live(league_id, selected_gameweek),
+		timeout=300,
+	)
+
+
+def _fetch_gameweek_leaderboard_live(
+	league_id: int = FPL_CLASSIC_LEAGUE_ID, selected_gameweek: int | None = None
+) -> dict:
+	"""Gameweek Winners: each manager's points for one specific gameweek,
+	picked via a dropdown, plus their cumulative total through that
+	gameweek. Finished gameweeks are read straight from
+	CaptainGameweekScore; the currently in-progress gameweek (if selected)
+	is fetched live, same pattern as Captain Mode and Manager of the
+	Month."""
+	empty = {
+		'entries': [],
+		'winner': None,
+		'available_gameweeks': [],
+		'selected_gameweek': None,
+		'gameweek_error': None,
 	}
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		current_event = next((event for event in events if event.get('is_current')), None)
+		next_event = next((event for event in events if event.get('is_next')), None)
+		current_gameweek = current_event.get('id') if current_event else None
+
+		finished_gameweeks = {event['id'] for event in events if event.get('finished')}
+		reference_gameweek = current_gameweek or (next_event.get('id') if next_event else None)
+		if reference_gameweek:
+			finished_gameweeks.add(reference_gameweek)
+		available_gameweeks = sorted(finished_gameweeks)
+
+		if not available_gameweeks:
+			return {**empty, 'gameweek_error': 'Could not determine any gameweeks from the FPL API.'}
+
+		try:
+			selected_gameweek = int(selected_gameweek)
+		except (TypeError, ValueError):
+			selected_gameweek = None
+		if selected_gameweek not in available_gameweeks:
+			selected_gameweek = available_gameweeks[-1]
+
+		entry_rows, using_new_entries = _fetch_league_entry_rows(league_id)
+		if not entry_rows:
+			return {
+				**empty,
+				'available_gameweeks': [{'value': gw, 'label': f'Gameweek {gw}'} for gw in available_gameweeks],
+				'selected_gameweek': selected_gameweek,
+				'gameweek_error': 'League fetched, but no members were returned yet.',
+			}
+
+		managers: dict[int, dict] = {}
+		for row in entry_rows:
+			entry_id = row.get('entry')
+			if not entry_id:
+				continue
+			if using_new_entries:
+				manager_name = f"{row.get('player_first_name', '')} {row.get('player_last_name', '')}".strip() or 'New Manager'
+			else:
+				manager_name = row.get('player_name', '').strip() or 'Unknown Manager'
+			managers[entry_id] = {
+				'entry_id': entry_id,
+				'manager_name': manager_name,
+				'team_name': row.get('entry_name', 'Unknown Team'),
+				'gameweek_points': 0,
+				'total_points': 0,
+			}
+
+		# Cumulative total through the selected gameweek, from stored finished weeks.
+		cumulative = (
+			CaptainGameweekScore.objects.filter(entry_id__in=managers.keys(), gameweek__lte=selected_gameweek)
+			.values('entry_id')
+			.annotate(total=Sum('gameweek_points'))
+		)
+		for row in cumulative:
+			if row['entry_id'] in managers:
+				managers[row['entry_id']]['total_points'] = row['total'] or 0
+
+		if selected_gameweek == current_gameweek:
+			def fetch_one(entry_id: int) -> tuple[int, int] | None:
+				try:
+					picks_payload = _get_json(
+						f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
+					)
+					return entry_id, picks_payload.get('entry_history', {}).get('points', 0)
+				except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+					return None
+
+			with ThreadPoolExecutor(max_workers=15) as executor:
+				futures = [executor.submit(fetch_one, entry_id) for entry_id in managers]
+				for future in as_completed(futures):
+					result = future.result()
+					if result:
+						entry_id, points = result
+						managers[entry_id]['gameweek_points'] = points
+						managers[entry_id]['total_points'] += points
+		else:
+			this_gw = CaptainGameweekScore.objects.filter(
+				entry_id__in=managers.keys(), gameweek=selected_gameweek
+			).values_list('entry_id', 'gameweek_points')
+			for entry_id, points in this_gw:
+				if entry_id in managers:
+					managers[entry_id]['gameweek_points'] = points
+
+		entries = list(managers.values())
+		entries.sort(key=lambda row: row['gameweek_points'], reverse=True)
+		for index, row in enumerate(entries, start=1):
+			row['rank'] = index
+
+		return {
+			'entries': entries[:15],
+			'winner': entries[0] if entries else None,
+			'available_gameweeks': [{'value': gw, 'label': f'Gameweek {gw}'} for gw in available_gameweeks],
+			'selected_gameweek': selected_gameweek,
+			'gameweek_error': None,
+		}
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return {**empty, 'gameweek_error': 'Gameweek leaderboard temporarily unavailable.'}
 
 
 def _month_label(year_month: str) -> str:
@@ -994,8 +1112,9 @@ def captain_mode(request):
 
 def gameweek_winners(request):
 	base_context = _base_page_context('gameweek_winners')
-	rows, league_name, league_error, league_source = _resolved_league_dataset()
-	gameweek_data = _build_gameweek_data(rows)
+	selected_gameweek = request.GET.get('gameweek', '').strip() or None
+	gameweek_data = _fetch_gameweek_leaderboard(selected_gameweek=selected_gameweek)
+	_rows, league_name, league_error, league_source = _resolved_league_dataset()
 	context = {
 		**base_context,
 		**gameweek_data,
@@ -1039,7 +1158,8 @@ def classic_league(request):
 def league_live_data(request):
 	rows, league_name, league_error, league_source = _resolved_league_dataset()
 	classic_data = _build_classic_data(rows)
-	gameweek_data = _build_gameweek_data(rows)
+	selected_gameweek = request.GET.get('gameweek', '').strip() or None
+	gameweek_data = _fetch_gameweek_leaderboard(selected_gameweek=selected_gameweek)
 	selected_month = request.GET.get('month', '').strip() or None
 	monthly_data = _fetch_monthly_leaderboard(selected_month=selected_month)
 
@@ -1054,6 +1174,7 @@ def league_live_data(request):
 		'gameweek': {
 			'winner': gameweek_data['winner'],
 			'entries': gameweek_data['entries'],
+			'selected_gameweek': gameweek_data['selected_gameweek'],
 		},
 		'monthly': {
 			'winner': monthly_data['monthly_winner'],

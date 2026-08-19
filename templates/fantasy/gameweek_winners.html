@@ -45,27 +45,40 @@
 
             {% include 'fantasy/_league_banner.html' %}
 
-            <section class="card reveal" data-gameweek-spotlight>
+            <section class="card reveal">
                 <header class="card-header">
-                    <h4>Winner Spotlight</h4>
-                    <span>Highest GW points</span>
+                    <h4>Choose Gameweek</h4>
+                    <span data-gameweek-select-label>{% if selected_gameweek %}Gameweek {{ selected_gameweek }}{% else %}-{% endif %}</span>
                 </header>
-                <div class="leader-row">
-                    <div>
-                        <strong data-gameweek-winner-name>{% if winner %}{{ winner.manager_name }}{% else %}No winner yet{% endif %}</strong>
-                        <p data-gameweek-winner-team>{% if winner %}{{ winner.team_name }}{% else %}-{% endif %}</p>
-                    </div>
-                    <div class="score-cell">
-                        <strong data-gameweek-winner-points>{% if winner %}{{ winner.gameweek_points }}{% else %}0{% endif %}</strong>
-                        <span>GW points</span>
-                    </div>
+                <form class="tracker-form" method="get" action="{% url 'fantasy:gameweek_winners' %}">
+                    <label for="gameweek-select">Gameweek</label>
+                    <select id="gameweek-select" name="gameweek" onchange="this.form.submit()">
+                        {% for gw in available_gameweeks %}
+                        <option value="{{ gw.value }}" {% if gw.value == selected_gameweek %}selected{% endif %}>{{ gw.label }}</option>
+                        {% endfor %}
+                    </select>
+                    <noscript><button type="submit">View gameweek</button></noscript>
+                </form>
+                <p class="inline-error {% if not gameweek_error %}is-hidden{% endif %}">{{ gameweek_error|default:'' }}</p>
+            </section>
+
+            <section class="winner-spotlight reveal" data-gameweek-spotlight>
+                <div class="winner-spotlight__badge">🏆</div>
+                <div class="winner-spotlight__body">
+                    <p class="winner-spotlight__label" data-gameweek-spotlight-label>{% if selected_gameweek %}Gameweek {{ selected_gameweek }} Winner{% else %}Winner{% endif %}</p>
+                    <h3 class="winner-spotlight__name" data-gameweek-winner-name>{% if winner %}{{ winner.manager_name }}{% else %}No winner yet{% endif %}</h3>
+                    <p class="winner-spotlight__team" data-gameweek-winner-team>{% if winner %}{{ winner.team_name }}{% else %}-{% endif %}</p>
+                </div>
+                <div class="winner-spotlight__score">
+                    <strong data-gameweek-winner-points>{% if winner %}{{ winner.gameweek_points }}{% else %}0{% endif %}</strong>
+                    <span>GW points</span>
                 </div>
             </section>
 
             <section class="card reveal">
                 <header class="card-header">
-                    <h4>Top 10 This Gameweek</h4>
-                    <span>Ordered by gameweek points</span>
+                    <h4>Top Managers</h4>
+                    <span data-gameweek-table-label>{% if selected_gameweek %}Gameweek {{ selected_gameweek }}{% else %}Ordered by gameweek points{% endif %}</span>
                 </header>
                 <div class="table-wrap">
                     <table>

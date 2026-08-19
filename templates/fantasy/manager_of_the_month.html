@@ -63,20 +63,16 @@
                 <p class="info-note"><strong>How the winner is chosen:</strong> for every gameweek whose deadline falls in the selected month, we add up each manager's gameweek points minus any transfer hit cost taken that gameweek: <strong>&Sigma; (GW points &minus; transfer hits)</strong>. Finished gameweeks are read from stored results; the current in-progress gameweek (if it falls in the selected month) is added live. Highest total for the month wins.</p>
             </section>
 
-            <section class="card reveal" data-monthly-spotlight>
-                <header class="card-header">
-                    <h4>Winner Spotlight</h4>
-                    <span data-monthly-spotlight-label>{{ selected_month_label|default:'This month' }}</span>
-                </header>
-                <div class="leader-row">
-                    <div>
-                        <strong data-monthly-winner-name>{% if monthly_winner %}{{ monthly_winner.manager_name }}{% else %}No winner yet{% endif %}</strong>
-                        <p data-monthly-winner-team>{% if monthly_winner %}{{ monthly_winner.team_name }}{% else %}-{% endif %}</p>
-                    </div>
-                    <div class="score-cell">
-                        <strong data-monthly-winner-score>{% if monthly_winner %}{{ monthly_winner.monthly_points }}{% else %}0{% endif %}</strong>
-                        <span>Monthly points</span>
-                    </div>
+            <section class="winner-spotlight reveal" data-monthly-spotlight>
+                <div class="winner-spotlight__badge">🏆</div>
+                <div class="winner-spotlight__body">
+                    <p class="winner-spotlight__label" data-monthly-spotlight-label>{{ selected_month_label|default:'This month' }}</p>
+                    <h3 class="winner-spotlight__name" data-monthly-winner-name>{% if monthly_winner %}{{ monthly_winner.manager_name }}{% else %}No winner yet{% endif %}</h3>
+                    <p class="winner-spotlight__team" data-monthly-winner-team>{% if monthly_winner %}{{ monthly_winner.team_name }}{% else %}-{% endif %}</p>
+                </div>
+                <div class="winner-spotlight__score">
+                    <strong data-monthly-winner-score>{% if monthly_winner %}{{ monthly_winner.monthly_points }}{% else %}0{% endif %}</strong>
+                    <span>Monthly points</span>
                 </div>
             </section>
 

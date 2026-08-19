@@ -837,6 +837,114 @@ td small {
     font-size: 12px;
 }
 
+.winner-spotlight {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 26px 28px;
+    border-radius: 24px;
+    background: linear-gradient(120deg, #37003c, #00713f 160%);
+    color: #fff;
+    box-shadow: 0 10px 26px rgba(55, 0, 60, 0.28);
+    position: relative;
+    overflow: hidden;
+}
+
+.winner-spotlight::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 88% 14%, rgba(0, 255, 135, 0.25), transparent 55%);
+    pointer-events: none;
+}
+
+.winner-spotlight__badge {
+    font-size: 46px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.winner-spotlight__body {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+}
+
+.winner-spotlight__label {
+    margin: 0 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.1rem;
+    font-size: 12px;
+    color: #00ff87;
+    font-weight: 700;
+}
+
+.winner-spotlight__name {
+    margin: 0;
+    font-size: 30px;
+    font-family: 'Space Grotesk', sans-serif;
+    line-height: 1.15;
+    word-break: break-word;
+}
+
+.winner-spotlight__team {
+    margin: 5px 0 0;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 15px;
+}
+
+.winner-spotlight__score {
+    text-align: center;
+    flex-shrink: 0;
+    position: relative;
+    padding-left: 18px;
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.winner-spotlight__score strong {
+    display: block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 38px;
+    line-height: 1;
+    color: #00ff87;
+}
+
+.winner-spotlight__score span {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.06rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+    .winner-spotlight {
+        flex-wrap: wrap;
+        padding: 22px 20px;
+        gap: 14px;
+    }
+
+    .winner-spotlight__badge {
+        font-size: 36px;
+    }
+
+    .winner-spotlight__name {
+        font-size: 24px;
+    }
+
+    .winner-spotlight__score {
+        margin-left: auto;
+        border-left: none;
+        padding-left: 0;
+    }
+
+    .winner-spotlight__score strong {
+        font-size: 30px;
+    }
+}
+
 .manager-meta {
     display: grid;
     gap: 6px;
