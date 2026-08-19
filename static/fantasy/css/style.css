@@ -951,11 +951,14 @@ td small {
    instead of showing a real name early. */
 .winner-spotlight--sealed {
     background: linear-gradient(120deg, #2c2c34, #1c1c22 160%);
+    padding: 18px 22px;
+    gap: 16px;
 }
 
 .winner-spotlight--sealed .winner-spotlight__badge {
     filter: grayscale(1);
     opacity: 0.75;
+    font-size: 34px;
 }
 
 .winner-spotlight--sealed .winner-spotlight__label {
@@ -963,7 +966,7 @@ td small {
 }
 
 .winner-spotlight__name--sealed {
-    font-size: 22px;
+    font-size: 18px;
     font-style: italic;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.85);
@@ -976,7 +979,7 @@ td small {
 
 .winner-spotlight--sealed .winner-spotlight__score strong {
     color: rgba(255, 255, 255, 0.85);
-    font-size: 30px;
+    font-size: 24px;
 }
 
 .manager-meta {
