@@ -701,6 +701,27 @@ def _fetch_captain_leaderboard_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> t
 		return [], 'Season total', 'Captain leaderboard temporarily unavailable.'
 
 
+def _is_season_finished() -> bool:
+	return cache.get_or_set('fpl:season_finished', _is_season_finished_live, timeout=3600)
+
+
+def _is_season_finished_live() -> bool:
+	"""True only once the LAST gameweek of the season has finished. Used to
+	keep season-long results (the Classic League winner, the Captain Mode
+	season leaderboard winner) anonymous while still in progress - only
+	the per-gameweek and per-month results are final early, since those
+	have their own natural end point."""
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		if not events:
+			return False
+		last_event = max(events, key=lambda event: event['id'])
+		return bool(last_event.get('finished'))
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return False
+
+
 def _resolved_league_dataset() -> tuple[list[dict], str, str | None, str]:
 	live_rows, league_name, live_error = _fetch_fpl_league_entries()
 	if live_rows:
@@ -1083,6 +1104,8 @@ def captain_mode(request):
 	base_context = _base_page_context('captain_mode')
 	captain_leaderboard, leaderboard_status, leaderboard_error = _fetch_captain_leaderboard()
 	_rows, league_name, _league_error, _league_source = _resolved_league_dataset()
+	season_finished = _is_season_finished()
+	captain_season_winner = captain_leaderboard[0] if season_finished and captain_leaderboard else None
 	context = {
 		**base_context,
 		'entry_id': entry_id_raw,
@@ -1094,6 +1117,8 @@ def captain_mode(request):
 		'leaderboard_error': leaderboard_error,
 		'league_name': league_name,
 		'page_ad': _page_ad(PageAdvertisement.Page.CAPTAIN_MODE),
+		'season_finished': season_finished,
+		'captain_season_winner': captain_season_winner,
 	}
 
 	if entry_id_raw:
@@ -1144,6 +1169,9 @@ def classic_league(request):
 	base_context = _base_page_context('classic_league')
 	rows, league_name, league_error, league_source = _resolved_league_dataset()
 	classic_data = _build_classic_data(rows)
+	season_finished = _is_season_finished()
+	classic_rows = classic_data.get('classic_rows') or []
+	classic_season_winner = classic_rows[0] if season_finished and classic_rows else None
 	context = {
 		**base_context,
 		**classic_data,
@@ -1151,6 +1179,8 @@ def classic_league(request):
 		'league_error': league_error,
 		'league_source': league_source,
 		'page_ad': _page_ad(PageAdvertisement.Page.CLASSIC_LEAGUE),
+		'season_finished': season_finished,
+		'classic_season_winner': classic_season_winner,
 	}
 	return render(request, 'fantasy/classic_league.html', context)
 

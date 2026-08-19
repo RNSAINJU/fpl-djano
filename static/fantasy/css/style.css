@@ -945,6 +945,40 @@ td small {
     }
 }
 
+/* Season-long results (Captain Mode, Classic League) keep the winner's
+   identity hidden until the final gameweek of the season has finished - a
+   muted/greyscale variant of the same card signals "not decided yet"
+   instead of showing a real name early. */
+.winner-spotlight--sealed {
+    background: linear-gradient(120deg, #2c2c34, #1c1c22 160%);
+}
+
+.winner-spotlight--sealed .winner-spotlight__badge {
+    filter: grayscale(1);
+    opacity: 0.75;
+}
+
+.winner-spotlight--sealed .winner-spotlight__label {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.winner-spotlight__name--sealed {
+    font-size: 22px;
+    font-style: italic;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    font-family: inherit;
+}
+
+.winner-spotlight--sealed .winner-spotlight__team {
+    max-width: 46ch;
+}
+
+.winner-spotlight--sealed .winner-spotlight__score strong {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 30px;
+}
+
 .manager-meta {
     display: grid;
     gap: 6px;

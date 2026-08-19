@@ -43,6 +43,29 @@
                 <span class="chip" data-classic-leader>Leader {{ leader_points }} pts</span>
             </section>
 
+            <section class="winner-spotlight winner-spotlight--sealed reveal">
+                <div class="winner-spotlight__badge">🏆</div>
+                <div class="winner-spotlight__body">
+                    <p class="winner-spotlight__label">Season Champion</p>
+                    {% if season_finished and classic_season_winner %}
+                    <h3 class="winner-spotlight__name">{{ classic_season_winner.manager_name }}</h3>
+                    <p class="winner-spotlight__team">{{ classic_season_winner.team_name }}</p>
+                    {% else %}
+                    <h3 class="winner-spotlight__name winner-spotlight__name--sealed">Winner announced at season end</h3>
+                    <p class="winner-spotlight__team">The Classic League title is decided over the full season - the champion is revealed once the final gameweek finishes.</p>
+                    {% endif %}
+                </div>
+                <div class="winner-spotlight__score">
+                    {% if season_finished and classic_season_winner %}
+                    <strong>{{ classic_season_winner.total_points }}</strong>
+                    <span>Total points</span>
+                    {% else %}
+                    <strong>🔒</strong>
+                    <span>Sealed until season ends</span>
+                    {% endif %}
+                </div>
+            </section>
+
             {% include 'fantasy/_league_banner.html' %}
 
             <section class="card reveal">
