@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ season.name }}{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-block">
+            <div class="brand-mark{% if site_logo_url %} brand-mark--logo{% endif %}">{% if site_logo_url %}<img src="{{ site_logo_url }}" alt="FPL Bhaktapur logo">{% else %}F{% endif %}</div>
+            <div>
+                <h1>FPL Bhaktapur</h1>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <p class="nav-label">Main</p>
+            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
+            <a href="{% url 'fantasy:home' %}#dashboard">Dashboard</a>
+            <a href="{% url 'fantasy:home' %}#top-picks">Players</a>
+            <a href="{% url 'fantasy:home' %}#fixtures">Compare</a>
+            <a href="{% url 'fantasy:home' %}#standings">History</a>
+            <p class="nav-label">FPL Bhaktapur</p>
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
+            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+            <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
+            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
+            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
+            <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:past_seasons' %}">Past Seasons</a>
+        </nav>
+    </aside>
+
+    <div class="main-panel">
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+            <h2>FPL Bhaktapur</h2>
+            <a class="topbar-button" href="{% url 'fantasy:past_seasons' %}">Back to past seasons</a>
+        </header>
+
+        <main id="main-content" class="main-content">
+            <section class="team-hero reveal">
+                <div>
+                    <p class="kicker">{{ season.league_name|default:'Season Archive' }}</p>
+                    <h3>{{ season.name }}</h3>
+                </div>
+                <span class="chip">Archived {{ season.archived_at|date:'d M Y' }}</span>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Final Classic League Standings</h4>
+                    <span>{{ standings|length }} managers</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>Total Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in standings %}
+                            <tr>
+                                <td>#{{ row.rank }}</td>
+                                <td>{{ row.manager_name }}</td>
+                                <td>{{ row.team_name }}</td>
+                                <td>{{ row.total_points }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No standings recorded for this season.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Captain Leaderboard</h4>
+                    <span>{{ captain_standings|length }} managers</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>Total Captain Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in captain_standings %}
+                            <tr>
+                                <td>#{{ row.rank }}</td>
+                                <td>{{ row.manager_name }}</td>
+                                <td>{{ row.team_name }}</td>
+                                <td>{{ row.captain_points }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No captain leaderboard recorded for this season.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Manager of the Month Winners</h4>
+                    <span>{{ monthly_winners|length }} months</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>Monthly Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in monthly_winners %}
+                            <tr>
+                                <td>{{ row.month_label }}</td>
+                                <td>{{ row.manager_name }}</td>
+                                <td>{{ row.team_name }}</td>
+                                <td>{{ row.points }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No monthly winners recorded for this season.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Gameweek Winners</h4>
+                    <span>{{ gameweek_winners|length }} gameweeks</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Gameweek</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>GW Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in gameweek_winners %}
+                            <tr>
+                                <td>GW{{ row.gameweek }}</td>
+                                <td>{{ row.manager_name }}</td>
+                                <td>{{ row.team_name }}</td>
+                                <td>{{ row.points }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No gameweek winners recorded for this season.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+{% endblock %}

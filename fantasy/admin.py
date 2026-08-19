@@ -1,11 +1,23 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.admin import AdminSite
 from django.db import models
 from django.template.response import TemplateResponse
 from django.shortcuts import redirect
 from django.urls import path
 
-from .models import CaptainGameweekScore, LeagueEntry, PageAdvertisement, Player, SiteSettings
+from .models import (
+	CaptainGameweekScore,
+	LeagueEntry,
+	PageAdvertisement,
+	Player,
+	Season,
+	SeasonCaptainStanding,
+	SeasonGameweekWinner,
+	SeasonMonthlyWinner,
+	SeasonStanding,
+	SiteSettings,
+)
+from .views import _archive_current_season
 
 
 class FantasyAdminSite(AdminSite):
@@ -156,8 +168,100 @@ class CaptainGameweekScoreAdmin(admin.ModelAdmin):
 	)
 
 
+class SeasonStandingInline(admin.TabularInline):
+	model = SeasonStanding
+	extra = 0
+	can_delete = False
+	fields = ('rank', 'manager_name', 'team_name', 'total_points')
+	readonly_fields = fields
+	verbose_name = 'Final standing'
+	verbose_name_plural = 'Final classic league standings'
+
+	def has_add_permission(self, request, obj=None):
+		return False
+
+
+class SeasonCaptainStandingInline(admin.TabularInline):
+	model = SeasonCaptainStanding
+	extra = 0
+	can_delete = False
+	fields = ('rank', 'manager_name', 'team_name', 'captain_points')
+	readonly_fields = fields
+	verbose_name = 'Captain standing'
+	verbose_name_plural = 'Final captain leaderboard'
+
+	def has_add_permission(self, request, obj=None):
+		return False
+
+
+class SeasonMonthlyWinnerInline(admin.TabularInline):
+	model = SeasonMonthlyWinner
+	extra = 0
+	can_delete = False
+	fields = ('month_label', 'manager_name', 'team_name', 'points')
+	readonly_fields = fields
+	verbose_name = 'Monthly winner'
+	verbose_name_plural = 'Manager of the Month winners'
+
+	def has_add_permission(self, request, obj=None):
+		return False
+
+
+class SeasonGameweekWinnerInline(admin.TabularInline):
+	model = SeasonGameweekWinner
+	extra = 0
+	can_delete = False
+	fields = ('gameweek', 'manager_name', 'team_name', 'points')
+	readonly_fields = fields
+	verbose_name = 'Gameweek winner'
+	verbose_name_plural = 'Gameweek winners'
+
+	def has_add_permission(self, request, obj=None):
+		return False
+
+
+class SeasonAdmin(admin.ModelAdmin):
+	list_display = ('name', 'league_name', 'archived_at')
+	inlines = [SeasonStandingInline, SeasonCaptainStandingInline, SeasonMonthlyWinnerInline, SeasonGameweekWinnerInline]
+
+	def get_fields(self, request, obj=None):
+		if obj is None:
+			# league_name/archived_at aren't known yet - archiving fills
+			# them in right after this row is created.
+			return ('name',)
+		return ('name', 'league_name', 'archived_at')
+
+	def get_readonly_fields(self, request, obj=None):
+		if obj is None:
+			return ()
+		return ('league_name', 'archived_at')
+
+	def get_inline_instances(self, request, obj=None):
+		# No point showing empty inline tables on the "add" form - there's
+		# nothing to show until the archive snapshot has actually run.
+		if obj is None:
+			return []
+		return super().get_inline_instances(request, obj)
+
+	def save_model(self, request, obj, form, change):
+		super().save_model(request, obj, form, change)
+		if not change:
+			summary = _archive_current_season(obj)
+			self.message_user(
+				request,
+				(
+					f"Archived '{obj.name}': {summary['standings']} final standings, "
+					f"{summary['gameweek_winners']} gameweek winners, "
+					f"{summary['monthly_winners']} monthly winners, "
+					f"{summary['captain_standings']} captain standings."
+				),
+				level=messages.SUCCESS,
+			)
+
+
 fantasy_admin_site.register(Player, PlayerAdmin)
 fantasy_admin_site.register(LeagueEntry, LeagueEntryAdmin)
 fantasy_admin_site.register(SiteSettings, SiteSettingsAdmin)
 fantasy_admin_site.register(CaptainGameweekScore, CaptainGameweekScoreAdmin)
 fantasy_admin_site.register(PageAdvertisement, PageAdvertisementAdmin)
+fantasy_admin_site.register(Season, SeasonAdmin)

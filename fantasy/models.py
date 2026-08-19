@@ -287,3 +287,88 @@ class CaptainGameweekScore(models.Model):
 
 	def __str__(self):
 		return f'GW{self.gameweek}: {self.manager_name} ({self.captain_points} captain pts)'
+
+
+class Season(models.Model):
+	"""One archived season. Created manually from the admin once a season
+	is truly over - creating a Season row triggers a one-time snapshot of
+	final standings, every gameweek/monthly winner, and the season captain
+	leaderboard into the records below, computed the same way the live
+	pages would show them. This is what keeps history safe once
+	sync_fpl_data starts overwriting CaptainGameweekScore/LeagueEntry with
+	the next season's numbers."""
+	name = models.CharField(max_length=100, unique=True, help_text='e.g. "FPL Bhaktapur S8" or "2025/26".')
+	league_name = models.CharField(max_length=150, blank=True)
+	archived_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['-archived_at']
+		verbose_name = 'Season'
+		verbose_name_plural = 'Seasons (archive)'
+
+	def __str__(self):
+		return self.name
+
+
+class SeasonStanding(models.Model):
+	"""Final classic league standings for an archived season."""
+	season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='standings')
+	rank = models.PositiveIntegerField()
+	manager_name = models.CharField(max_length=100)
+	team_name = models.CharField(max_length=100)
+	total_points = models.PositiveIntegerField(default=0)
+
+	class Meta:
+		ordering = ['season', 'rank']
+		unique_together = ('season', 'rank')
+
+	def __str__(self):
+		return f'{self.season}: #{self.rank} {self.manager_name}'
+
+
+class SeasonGameweekWinner(models.Model):
+	"""Winner of a single gameweek, for an archived season."""
+	season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='gameweek_winners')
+	gameweek = models.PositiveSmallIntegerField()
+	manager_name = models.CharField(max_length=100)
+	team_name = models.CharField(max_length=100)
+	points = models.IntegerField(default=0)
+
+	class Meta:
+		ordering = ['season', 'gameweek']
+		unique_together = ('season', 'gameweek')
+
+	def __str__(self):
+		return f'{self.season}: GW{self.gameweek} - {self.manager_name}'
+
+
+class SeasonMonthlyWinner(models.Model):
+	"""Manager of the Month winner for one calendar month, for an archived
+	season."""
+	season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='monthly_winners')
+	month_label = models.CharField(max_length=20, help_text='e.g. "August 2026".')
+	manager_name = models.CharField(max_length=100)
+	team_name = models.CharField(max_length=100)
+	points = models.IntegerField(default=0)
+
+	class Meta:
+		ordering = ['season', 'id']
+
+	def __str__(self):
+		return f'{self.season}: {self.month_label} - {self.manager_name}'
+
+
+class SeasonCaptainStanding(models.Model):
+	"""Final season-long Captain Mode leaderboard for an archived season."""
+	season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='captain_standings')
+	rank = models.PositiveIntegerField()
+	manager_name = models.CharField(max_length=100)
+	team_name = models.CharField(max_length=100)
+	captain_points = models.IntegerField(default=0)
+
+	class Meta:
+		ordering = ['season', 'rank']
+		unique_together = ('season', 'rank')
+
+	def __str__(self):
+		return f'{self.season}: #{self.rank} {self.manager_name} (captain)'

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Past Seasons{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-block">
+            <div class="brand-mark{% if site_logo_url %} brand-mark--logo{% endif %}">{% if site_logo_url %}<img src="{{ site_logo_url }}" alt="FPL Bhaktapur logo">{% else %}F{% endif %}</div>
+            <div>
+                <h1>FPL Bhaktapur</h1>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <p class="nav-label">Main</p>
+            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
+            <a href="{% url 'fantasy:home' %}#dashboard">Dashboard</a>
+            <a href="{% url 'fantasy:home' %}#top-picks">Players</a>
+            <a href="{% url 'fantasy:home' %}#fixtures">Compare</a>
+            <a href="{% url 'fantasy:home' %}#standings">History</a>
+            <p class="nav-label">FPL Bhaktapur</p>
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
+            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+            <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
+            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
+            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
+            <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:past_seasons' %}">Past Seasons</a>
+        </nav>
+    </aside>
+
+    <div class="main-panel">
+        <header class="topbar">
+            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+            <h2>FPL Bhaktapur</h2>
+            <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to dashboard</a>
+        </header>
+
+        <main id="main-content" class="main-content">
+            <section class="team-hero reveal">
+                <div>
+                    <p class="kicker">Season Archive</p>
+                    <h3>Past Seasons</h3>
+                </div>
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Archived Seasons</h4>
+                    <span>{{ seasons|length }} archived</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Season</th>
+                                <th>League</th>
+                                <th>Archived</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for season in seasons %}
+                            <tr>
+                                <td>{{ season.name }}</td>
+                                <td>{{ season.league_name|default:'-' }}</td>
+                                <td>{{ season.archived_at|date:'d M Y' }}</td>
+                                <td><a class="pick-link" href="{% url 'fantasy:season_detail' season.id %}">View results</a></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No seasons archived yet - check back once the current season wraps up.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+{% endblock %}

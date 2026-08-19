@@ -6,10 +6,18 @@ from urllib import error, request
 from django.core.cache import cache
 from django.db.models import F, Sum
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
-from .models import CaptainGameweekScore, PageAdvertisement
+from .models import (
+	CaptainGameweekScore,
+	PageAdvertisement,
+	Season,
+	SeasonCaptainStanding,
+	SeasonGameweekWinner,
+	SeasonMonthlyWinner,
+	SeasonStanding,
+)
 
 FPL_CLASSIC_LEAGUE_ID = 6232
 
@@ -1060,6 +1068,93 @@ def _page_ad(page: str) -> PageAdvertisement | None:
 	return PageAdvertisement.objects.filter(page=page).first()
 
 
+def _archive_current_season(season: Season, league_id: int = FPL_CLASSIC_LEAGUE_ID) -> dict:
+	"""Snapshots final standings, every gameweek/monthly winner, and the
+	season captain leaderboard into the given (already-created, empty)
+	Season row, using the exact same live computations the public pages
+	use, so the archive matches what was actually shown. Meant to be run
+	once, manually, after a season is genuinely over - CaptainGameweekScore
+	and LeagueEntry get overwritten by sync_fpl_data once next season's
+	gameweeks start, so this is the one chance to freeze the numbers."""
+	summary = {'standings': 0, 'gameweek_winners': 0, 'monthly_winners': 0, 'captain_standings': 0}
+
+	rows, league_name, _league_error, _league_source = _resolved_league_dataset()
+	if league_name and not season.league_name:
+		season.league_name = league_name
+		season.save(update_fields=['league_name'])
+
+	standings = [
+		SeasonStanding(
+			season=season,
+			rank=row['rank'],
+			manager_name=row['manager_name'],
+			team_name=row['team_name'],
+			total_points=row['total_points'],
+		)
+		for row in rows
+	]
+	SeasonStanding.objects.bulk_create(standings)
+	summary['standings'] = len(standings)
+
+	finished_gameweeks = sorted(CaptainGameweekScore.objects.values_list('gameweek', flat=True).distinct())
+	gameweek_winner_rows = []
+	for gameweek in finished_gameweeks:
+		gameweek_data = _fetch_gameweek_leaderboard_live(league_id, selected_gameweek=gameweek)
+		winner = gameweek_data.get('winner')
+		if winner:
+			gameweek_winner_rows.append(
+				SeasonGameweekWinner(
+					season=season,
+					gameweek=gameweek,
+					manager_name=winner['manager_name'],
+					team_name=winner['team_name'],
+					points=winner['gameweek_points'],
+				)
+			)
+	SeasonGameweekWinner.objects.bulk_create(gameweek_winner_rows)
+	summary['gameweek_winners'] = len(gameweek_winner_rows)
+
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		events = bootstrap.get('events', [])
+	except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+		events = []
+	gameweek_month_map = _gameweek_month_map(events)
+	months = sorted({gameweek_month_map[gw] for gw in finished_gameweeks if gw in gameweek_month_map})
+	monthly_winner_rows = []
+	for month in months:
+		month_data = _fetch_monthly_leaderboard_live(league_id, selected_month=month)
+		winner = month_data.get('monthly_winner')
+		if winner:
+			monthly_winner_rows.append(
+				SeasonMonthlyWinner(
+					season=season,
+					month_label=month_data.get('selected_month_label') or _month_label(month),
+					manager_name=winner['manager_name'],
+					team_name=winner['team_name'],
+					points=winner['monthly_points'],
+				)
+			)
+	SeasonMonthlyWinner.objects.bulk_create(monthly_winner_rows)
+	summary['monthly_winners'] = len(monthly_winner_rows)
+
+	captain_rows, _status_label, _captain_error = _fetch_captain_leaderboard_live(league_id)
+	captain_standing_rows = [
+		SeasonCaptainStanding(
+			season=season,
+			rank=row['rank'],
+			manager_name=row['manager_name'],
+			team_name=row['team_name'],
+			captain_points=row['captain_points'],
+		)
+		for row in captain_rows
+	]
+	SeasonCaptainStanding.objects.bulk_create(captain_standing_rows)
+	summary['captain_standings'] = len(captain_standing_rows)
+
+	return summary
+
+
 def home(request):
 	base_context = _base_page_context('home')
 	dashboard_data = _fetch_dashboard_data()
@@ -1237,3 +1332,26 @@ def league_live_data(request):
 		},
 	}
 	return JsonResponse(response)
+
+
+def past_seasons(request):
+	base_context = _base_page_context('past_seasons')
+	context = {
+		**base_context,
+		'seasons': Season.objects.all(),
+	}
+	return render(request, 'fantasy/past_seasons.html', context)
+
+
+def season_detail(request, season_id):
+	base_context = _base_page_context('past_seasons')
+	season = get_object_or_404(Season, pk=season_id)
+	context = {
+		**base_context,
+		'season': season,
+		'standings': season.standings.all(),
+		'gameweek_winners': season.gameweek_winners.all(),
+		'monthly_winners': season.monthly_winners.all(),
+		'captain_standings': season.captain_standings.all(),
+	}
+	return render(request, 'fantasy/season_detail.html', context)
