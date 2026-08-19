@@ -1199,6 +1199,24 @@ td small {
     .sidebar-nav a {
         font-size: 17px;
     }
+
+    /* table's min-width: 520px (below) is there so columns don't get
+       crushed on wider screens where .table-wrap's own horizontal scroll
+       is the better tradeoff - but on a narrow phone that just forces
+       every row to scroll instead of fitting the viewport. Below this
+       breakpoint, let the table shrink to the card's actual width and
+       wrap cell text instead. */
+    table {
+        min-width: 0;
+        table-layout: fixed;
+    }
+
+    th,
+    td {
+        padding: 8px 6px;
+        font-size: 12px;
+        word-break: break-word;
+    }
 }
 
 @media (max-width: 380px) {
