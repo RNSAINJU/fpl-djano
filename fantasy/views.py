@@ -2,6 +2,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from urllib import error, request
+from zoneinfo import ZoneInfo
 
 from django.core.cache import cache
 from django.db.models import F, Sum
@@ -20,6 +21,10 @@ from .models import (
 )
 
 FPL_CLASSIC_LEAGUE_ID = 6232
+
+# Fixture kickoff times come from the FPL API in UTC. The dashboard displays
+# them in Nepal time (Kathmandu, UTC+5:45) rather than the site's UTC clock.
+NEPAL_TZ = ZoneInfo('Asia/Kathmandu')
 
 # How long live FPL data (league standings, captain/monthly leaderboards,
 # dashboard) is cached before the next request re-fetches it live. A cache
@@ -420,7 +425,7 @@ def _fetch_dashboard_data_live() -> dict:
 			kickoff_display = '-'
 			if kickoff_iso:
 				kickoff_dt = datetime.fromisoformat(kickoff_iso.replace('Z', '+00:00'))
-				kickoff_display = timezone.localtime(kickoff_dt).strftime('%d %b, %H:%M')
+				kickoff_display = kickoff_dt.astimezone(NEPAL_TZ).strftime('%d %b, %H:%M') + ' NPT'
 			upcoming_fixtures.append(
 				{
 					'home_team': {
