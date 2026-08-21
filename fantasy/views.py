@@ -46,6 +46,14 @@ def _photo_url_from_code(code: int | str | None) -> str:
 	return f'https://resources.premierleague.com/premierleague/photos/players/250x250/p{code}.png'
 
 
+def _shirt_url_from_code(code: int | str | None) -> str:
+	"""The FPL app's own 3D-rendered team jersey icon, keyed by each team's
+	`code` field from bootstrap-static (not its `id`)."""
+	if not code:
+		return ''
+	return f'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_{code}-66.png'
+
+
 def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
 	base_url = 'https://fantasy.premierleague.com/api'
 	try:
@@ -431,10 +439,12 @@ def _fetch_dashboard_data_live() -> dict:
 					'home_team': {
 						'short_name': home_team.get('short_name', '-'),
 						'badge': home_team.get('short_name', 'H')[:1],
+						'shirt_url': _shirt_url_from_code(home_team.get('code')),
 					},
 					'away_team': {
 						'short_name': away_team.get('short_name', '-'),
 						'badge': away_team.get('short_name', 'A')[:1],
+						'shirt_url': _shirt_url_from_code(away_team.get('code')),
 					},
 					'kickoff_display': kickoff_display,
 					'gameweek': fixture.get('event') or '-',
