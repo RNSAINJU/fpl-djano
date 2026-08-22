@@ -120,8 +120,12 @@
                             <span>vs</span>
                             <strong>{{ fixture.away_team.short_name }}</strong>
                         </div>
-                        <div class="fixture-status">Upcoming</div>
+                        <div class="fixture-status{% if fixture.status == 'LIVE' %} fixture-status--live{% endif %}">{{ fixture.status }}</div>
+                        {% if fixture.status == 'Upcoming' %}
                         <p>{{ fixture.kickoff_display }}</p>
+                        {% else %}
+                        <p class="fixture-score">{{ fixture.home_score|default:0 }} - {{ fixture.away_score|default:0 }}</p>
+                        {% endif %}
                     </article>
                     {% empty %}
                     <article class="live-fixture-card">

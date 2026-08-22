@@ -437,14 +437,65 @@ def _fetch_dashboard_data_live() -> dict:
 				}
 			)
 
+		# Live Fixtures board: only the current (or next, pre-season)
+		# gameweek's own matches, with their real live/finished status -
+		# not just "the next 10 chronological fixtures", which spills into
+		# the following gameweek once the current one is mostly played out.
+		events = bootstrap.get('events', [])
+		current_event = next((event for event in events if event.get('is_current')), None)
+		next_event = next((event for event in events if event.get('is_next')), None)
+		target_event = current_event or next_event
+		target_gameweek = target_event.get('id') if target_event else None
+
+		live_fixtures = []
+		if target_gameweek:
+			try:
+				gw_fixture_rows = _get_json(
+					f'https://fantasy.premierleague.com/api/fixtures/?event={target_gameweek}'
+				)
+			except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+				gw_fixture_rows = []
+			for fixture in sorted(gw_fixture_rows, key=lambda row: row.get('kickoff_time') or ''):
+				home_team = team_lookup.get(fixture.get('team_h'), {})
+				away_team = team_lookup.get(fixture.get('team_a'), {})
+				kickoff_iso = fixture.get('kickoff_time')
+				kickoff_display = '-'
+				if kickoff_iso:
+					kickoff_dt = datetime.fromisoformat(kickoff_iso.replace('Z', '+00:00'))
+					kickoff_display = timezone.localtime(kickoff_dt).strftime('%d %b, %H:%M')
+
+				if fixture.get('finished'):
+					status = 'FT'
+				elif fixture.get('started'):
+					status = 'LIVE'
+				else:
+					status = 'Upcoming'
+
+				live_fixtures.append(
+					{
+						'home_team': {
+							'short_name': home_team.get('short_name', '-'),
+							'badge': home_team.get('short_name', 'H')[:1],
+						},
+						'away_team': {
+							'short_name': away_team.get('short_name', '-'),
+							'badge': away_team.get('short_name', 'A')[:1],
+						},
+						'kickoff_display': kickoff_display,
+						'status': status,
+						'home_score': fixture.get('team_h_score'),
+						'away_score': fixture.get('team_a_score'),
+					}
+				)
+
 		return {
 			'top_players': top_players,
 			'top_scorer': top_scorer,
 			'top_assister': top_assister,
 			'top_clean_sheet': top_clean_sheet,
 			'fixtures': upcoming_fixtures[:4],
-			'live_fixtures': upcoming_fixtures,
-			'live_fixtures_label': f"GW {upcoming_fixtures[0]['gameweek']}" if upcoming_fixtures else 'Upcoming',
+			'live_fixtures': live_fixtures,
+			'live_fixtures_label': f"GW {target_gameweek}" if target_gameweek else 'Upcoming',
 			'teams_count': len(teams),
 			'players_count': len(elements),
 		}

@@ -573,11 +573,24 @@ body {
     font-size: 12px;
 }
 
+.fixture-status--live {
+    background: rgba(0, 255, 135, 0.25);
+    color: #04231a;
+    font-weight: 700;
+}
+
 .live-fixture-card p {
     margin: 0;
     text-align: center;
     color: #ddcffd;
     font-size: 14px;
+}
+
+.fixture-score {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px !important;
+    font-weight: 700;
+    color: #fff !important;
 }
 
 .card-header {
