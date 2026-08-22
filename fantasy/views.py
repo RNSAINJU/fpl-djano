@@ -1514,8 +1514,10 @@ def league_live_data(request):
 		response['gameweek'] = {
 			'winner': gameweek_data['winner'],
 			'entries': gameweek_data['entries'],
+			'available_gameweeks': gameweek_data['available_gameweeks'],
 			'selected_gameweek': gameweek_data['selected_gameweek'],
 			'selected_gameweek_finished': gameweek_data['selected_gameweek_finished'],
+			'gameweek_error': gameweek_data['gameweek_error'],
 		}
 
 	if section in ('monthly', 'all'):
@@ -1524,9 +1526,11 @@ def league_live_data(request):
 		response['monthly'] = {
 			'winner': monthly_data['monthly_winner'],
 			'rankings': monthly_data['monthly_rankings'],
+			'available_months': monthly_data['available_months'],
 			'selected_month': monthly_data['selected_month'],
 			'selected_month_label': monthly_data['selected_month_label'],
 			'selected_month_finished': monthly_data['selected_month_finished'],
+			'monthly_error': monthly_data['monthly_error'],
 		}
 
 	if section in ('captain', 'all'):
