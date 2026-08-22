@@ -392,17 +392,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const medalFor = (rank) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`);
 
-        const renderMiniLeaders = (selector, rows, scoreKey) => {
+        const renderMiniLeaders = (selector, rows, scoreKey, count = 3) => {
             const list = document.querySelector(selector);
             if (!list) {
                 return;
             }
-            const top3 = (rows || []).slice(0, 3);
-            if (!top3.length) {
+            const topRows = (rows || []).slice(0, count);
+            if (!topRows.length) {
                 list.innerHTML = '<li class="mini-leaders__empty">No data yet</li>';
                 return;
             }
-            list.innerHTML = top3
+            list.innerHTML = topRows
                 .map((row) => `
                     <li${row.rank === 1 ? ' class="mini-leaders__item--first"' : ''}>
                         <span class="mini-leaders__rank">${medalFor(row.rank)}</span>
@@ -434,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const gameweekData = payload.gameweek;
             if (gameweekData) {
-                renderMiniLeaders('[data-home-gameweek-list]', gameweekData.entries, 'gameweek_points');
+                renderMiniLeaders('[data-home-gameweek-list]', gameweekData.entries, 'gameweek_points', 1);
                 const gwLabel = document.querySelector('[data-home-gameweek-label]');
                 if (gwLabel) {
                     gwLabel.textContent = gameweekData.selected_gameweek ? ` · GW${gameweekData.selected_gameweek}` : '';
@@ -442,11 +442,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const captainRows = (payload.captain && payload.captain.leaderboard) || [];
-            renderMiniLeaders('[data-home-captain-list]', captainRows, 'captain_points');
+            renderMiniLeaders('[data-home-captain-list]', captainRows, 'captain_points', 1);
 
             const monthlyData = payload.monthly;
             if (monthlyData) {
-                renderMiniLeaders('[data-home-monthly-list]', monthlyData.rankings, 'monthly_points');
+                renderMiniLeaders('[data-home-monthly-list]', monthlyData.rankings, 'monthly_points', 1);
                 const monthLabel = document.querySelector('[data-home-monthly-label]');
                 if (monthLabel) {
                     monthLabel.textContent = monthlyData.selected_month_label ? ` · ${monthlyData.selected_month_label}` : '';
