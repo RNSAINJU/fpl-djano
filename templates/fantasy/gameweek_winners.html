@@ -74,7 +74,7 @@
                     </select>
                     <noscript><button type="submit">View gameweek</button></noscript>
                 </form>
-                <p class="inline-error {% if not gameweek_error %}is-hidden{% endif %}">{{ gameweek_error|default:'' }}</p>
+                <p class="inline-error {% if not gameweek_error %}is-hidden{% endif %}" data-gameweek-error>{{ gameweek_error|default:'' }}</p>
             </section>
 
             <section class="card reveal">
@@ -104,7 +104,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5">No entries available yet.</td>
+                                <td colspan="5">Loading gameweek standings…</td>
                             </tr>
                             {% endfor %}
                         </tbody>

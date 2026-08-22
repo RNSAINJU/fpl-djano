@@ -531,6 +531,10 @@ def _fetch_dashboard_data_live() -> dict:
 
 
 def _get_countdown_context() -> dict:
+	return cache.get_or_set('fpl:countdown_context', _get_countdown_context_live, timeout=FPL_CACHE_TIMEOUT)
+
+
+def _get_countdown_context_live() -> dict:
 	fallback_deadline = timezone.now() + timezone.timedelta(days=19, hours=11, minutes=34, seconds=52)
 	context = {
 		'gameweek_name': 'Gameweek 1',
@@ -1295,20 +1299,26 @@ def captain_mode(request):
 		entry_id_raw = str(request.session.get('fpl_entry_id', '')).strip()
 
 	base_context = _base_page_context('captain_mode')
-	captain_leaderboard, leaderboard_status, leaderboard_error = _fetch_captain_leaderboard()
-	_rows, league_name, _league_error, _league_source = _resolved_league_dataset()
+	# The season-total leaderboard (fanning out to a live picks call per
+	# league member) is left for the page's own JS to fetch right after
+	# the shell loads, instead of blocking this response on it. The
+	# "Season Champion" spotlight only needs that data in the rare case
+	# the season has actually finished - cheaply checked first.
 	season_finished = _is_season_finished()
-	captain_season_winner = captain_leaderboard[0] if season_finished and captain_leaderboard else None
+	captain_season_winner = None
+	if season_finished:
+		captain_leaderboard_sync, _status, _error = _fetch_captain_leaderboard()
+		captain_season_winner = captain_leaderboard_sync[0] if captain_leaderboard_sync else None
 	context = {
 		**base_context,
 		'entry_id': entry_id_raw,
 		'captain_data': None,
 		'captain_error': None,
 		'saved_message': None,
-		'captain_leaderboard': captain_leaderboard,
-		'leaderboard_status': leaderboard_status,
-		'leaderboard_error': leaderboard_error,
-		'league_name': league_name,
+		'captain_leaderboard': [],
+		'leaderboard_status': 'Loading…',
+		'leaderboard_error': None,
+		'league_name': '',
 		'page_ad': _page_ad(PageAdvertisement.Page.CAPTAIN_MODE),
 		'season_finished': season_finished,
 		'captain_season_winner': captain_season_winner,
@@ -1331,14 +1341,17 @@ def captain_mode(request):
 def gameweek_winners(request):
 	base_context = _base_page_context('gameweek_winners')
 	selected_gameweek = request.GET.get('gameweek', '').strip() or None
-	gameweek_data = _fetch_gameweek_leaderboard(selected_gameweek=selected_gameweek)
-	_rows, league_name, league_error, league_source = _resolved_league_dataset()
 	context = {
 		**base_context,
-		**gameweek_data,
-		'league_name': league_name,
-		'league_error': league_error,
-		'league_source': league_source,
+		'entries': [],
+		'winner': None,
+		'available_gameweeks': [],
+		'selected_gameweek': int(selected_gameweek) if selected_gameweek and selected_gameweek.isdigit() else None,
+		'selected_gameweek_finished': False,
+		'gameweek_error': None,
+		'league_name': '',
+		'league_error': None,
+		'league_source': 'none',
 		'page_ad': _page_ad(PageAdvertisement.Page.GAMEWEEK_WINNERS),
 	}
 	return render(request, 'fantasy/gameweek_winners.html', context)
@@ -1347,12 +1360,16 @@ def gameweek_winners(request):
 def manager_of_the_month(request):
 	base_context = _base_page_context('manager_of_the_month')
 	selected_month = request.GET.get('month', '').strip() or None
-	monthly_data = _fetch_monthly_leaderboard(selected_month=selected_month)
-	_rows, league_name, _league_error, _league_source = _resolved_league_dataset()
 	context = {
 		**base_context,
-		**monthly_data,
-		'league_name': league_name,
+		'monthly_rankings': [],
+		'monthly_winner': None,
+		'available_months': [],
+		'selected_month': selected_month,
+		'selected_month_label': None,
+		'selected_month_finished': False,
+		'monthly_error': None,
+		'league_name': '',
 		'page_ad': _page_ad(PageAdvertisement.Page.MANAGER_OF_THE_MONTH),
 	}
 	return render(request, 'fantasy/manager_of_the_month.html', context)
@@ -1379,35 +1396,58 @@ def classic_league(request):
 
 
 def league_live_data(request):
+	"""Backs every page's table data - both the initial "fetch right after
+	the shell loads" call and the 45s refresh. `section` scopes the work to
+	just what that page needs (classic/gameweek/monthly/captain), since
+	each of those can mean fanning out to a live picks call per league
+	member - computing all four on every request/poll regardless of which
+	page asked was pure waste. Omit `section` (or 'all') to get everything,
+	which the dashboard needs since it shows a slice of all four."""
+	section = request.GET.get('section', '').strip() or 'all'
 	rows, league_name, league_error, league_source = _resolved_league_dataset()
-	classic_data = _build_classic_data(rows)
-	selected_gameweek = request.GET.get('gameweek', '').strip() or None
-	gameweek_data = _fetch_gameweek_leaderboard(selected_gameweek=selected_gameweek)
-	selected_month = request.GET.get('month', '').strip() or None
-	monthly_data = _fetch_monthly_leaderboard(selected_month=selected_month)
 
 	response = {
 		'league_name': league_name,
 		'league_error': league_error,
 		'league_source': league_source,
-		'classic': {
+	}
+
+	if section in ('classic', 'all'):
+		classic_data = _build_classic_data(rows)
+		response['classic'] = {
 			'leader_points': classic_data['leader_points'],
 			'rows': classic_data['classic_rows'],
-		},
-		'gameweek': {
+		}
+
+	if section in ('gameweek', 'all'):
+		selected_gameweek = request.GET.get('gameweek', '').strip() or None
+		gameweek_data = _fetch_gameweek_leaderboard(selected_gameweek=selected_gameweek)
+		response['gameweek'] = {
 			'winner': gameweek_data['winner'],
 			'entries': gameweek_data['entries'],
 			'selected_gameweek': gameweek_data['selected_gameweek'],
 			'selected_gameweek_finished': gameweek_data['selected_gameweek_finished'],
-		},
-		'monthly': {
+		}
+
+	if section in ('monthly', 'all'):
+		selected_month = request.GET.get('month', '').strip() or None
+		monthly_data = _fetch_monthly_leaderboard(selected_month=selected_month)
+		response['monthly'] = {
 			'winner': monthly_data['monthly_winner'],
 			'rankings': monthly_data['monthly_rankings'],
 			'selected_month': monthly_data['selected_month'],
 			'selected_month_label': monthly_data['selected_month_label'],
 			'selected_month_finished': monthly_data['selected_month_finished'],
-		},
-	}
+		}
+
+	if section in ('captain', 'all'):
+		captain_leaderboard, leaderboard_status, leaderboard_error = _fetch_captain_leaderboard()
+		response['captain'] = {
+			'leaderboard': captain_leaderboard,
+			'status': leaderboard_status,
+			'error': leaderboard_error,
+		}
+
 	return JsonResponse(response)
 
 

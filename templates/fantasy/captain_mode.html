@@ -31,7 +31,7 @@
             <a class="topbar-button" href="{% url 'fantasy:live_gameweek' %}">Go to live tracker</a>
         </header>
 
-        <main id="main-content" class="main-content">
+        <main id="main-content" class="main-content" data-league-page="captain" data-live-endpoint="{% url 'fantasy:league_live_data' %}">
             <section class="team-hero reveal">
                 <div>
                     <p class="kicker">Smart Pick Engine</p>
@@ -67,10 +67,10 @@
             <section class="card reveal">
                 <header class="card-header">
                     <h4>Captain Points Leaderboard</h4>
-                    <span>{{ leaderboard_status|default:'Season total' }}</span>
+                    <span data-captain-status>{{ leaderboard_status|default:'Season total' }}</span>
                 </header>
                 <p class="info-note">{{ captain_leaderboard_note|safe }}</p>
-                <p class="inline-error {% if not leaderboard_error %}is-hidden{% endif %}">{{ leaderboard_error|default:'' }}</p>
+                <p class="inline-error {% if not leaderboard_error %}is-hidden{% endif %}" data-captain-error>{{ leaderboard_error|default:'' }}</p>
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -82,7 +82,7 @@
                                 <th>Total Captain Pts</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody data-captain-rows>
                             {% for row in captain_leaderboard %}
                             <tr>
                                 <td>#{{ row.rank }}</td>
@@ -93,7 +93,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5">No captain data available yet.</td>
+                                <td colspan="5">Loading captain leaderboard…</td>
                             </tr>
                             {% endfor %}
                         </tbody>

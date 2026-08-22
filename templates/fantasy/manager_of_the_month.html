@@ -74,7 +74,7 @@
                     </select>
                     <noscript><button type="submit">View month</button></noscript>
                 </form>
-                <p class="inline-error {% if not monthly_error %}is-hidden{% endif %}" data-league-error>{{ monthly_error|default:'' }}</p>
+                <p class="inline-error {% if not monthly_error %}is-hidden{% endif %}" data-monthly-error>{{ monthly_error|default:'' }}</p>
                 <p class="info-note">{{ monthly_winner_note|safe }}</p>
             </section>
 
@@ -107,7 +107,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6">No rankings available yet.</td>
+                                <td colspan="6">Loading monthly rankings…</td>
                             </tr>
                             {% endfor %}
                         </tbody>
