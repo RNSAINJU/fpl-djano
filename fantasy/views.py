@@ -1460,6 +1460,14 @@ def league_live_data(request):
 	return JsonResponse(response)
 
 
+def prizes(request):
+	base_context = _base_page_context('prizes')
+	context = {
+		**base_context,
+	}
+	return render(request, 'fantasy/prizes.html', context)
+
+
 def past_seasons(request):
 	base_context = _base_page_context('past_seasons')
 	context = {

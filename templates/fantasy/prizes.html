@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Past Seasons{% endblock %}
+{% block title %}Prizes{% endblock %}
 
 {% block content %}
 <div class="app-shell">
@@ -35,42 +36,13 @@
         <main id="main-content" class="main-content">
             <section class="team-hero reveal">
                 <div>
-                    <p class="kicker">Season Archive</p>
-                    <h3>Past Seasons</h3>
+                    <p class="kicker">Game Modes</p>
+                    <h3>Prizes</h3>
                 </div>
             </section>
 
             <section class="card reveal">
-                <header class="card-header">
-                    <h4>Archived Seasons</h4>
-                    <span>{{ seasons|length }} archived</span>
-                </header>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Season</th>
-                                <th>League</th>
-                                <th>Archived</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for season in seasons %}
-                            <tr>
-                                <td>{{ season.name }}</td>
-                                <td>{{ season.league_name|default:'-' }}</td>
-                                <td>{{ season.archived_at|date:'d M Y' }}</td>
-                                <td><a class="pick-link" href="{% url 'fantasy:season_detail' season.id %}">View results</a></td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4">No seasons archived yet - check back once the current season wraps up.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <img src="{% static 'fantasy/img/prizes.jpg' %}" alt="FPL Bhaktapur game modes and money prizes" style="width: 100%; height: auto; border-radius: 12px; display: block;">
             </section>
         </main>
     </div>

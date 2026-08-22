@@ -9,6 +9,7 @@ from .views import (
     live_gameweek,
     manager_of_the_month,
     past_seasons,
+    prizes,
     season_detail,
 )
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path('gameweek-winners/', gameweek_winners, name='gameweek_winners'),
     path('manager-of-the-month/', manager_of_the_month, name='manager_of_the_month'),
     path('classic-league/', classic_league, name='classic_league'),
+    path('prizes/', prizes, name='prizes'),
     path('past-seasons/', past_seasons, name='past_seasons'),
     path('past-seasons/<int:season_id>/', season_detail, name='season_detail'),
     path('api/league-live-data/', league_live_data, name='league_live_data'),
