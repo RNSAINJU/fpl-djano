@@ -1228,22 +1228,27 @@ def _archive_current_season(season: Season, league_id: int = FPL_CLASSIC_LEAGUE_
 
 
 def home(request):
+	# Aggregates the single most expensive combination on the site (its
+	# own dashboard fetch, plus the top-3 slice of all four other pages'
+	# leaderboards) - rendered empty here and filled in by JS right after
+	# load, same pattern as Captain Mode/Gameweek Winners/Manager of the
+	# Month, via league_live_data's `dashboard` (+ default `all`) section.
 	base_context = _base_page_context('home')
-	dashboard_data = _fetch_dashboard_data()
-	rows, _, _, _ = _resolved_league_dataset()
-	classic_data = _build_classic_data(rows)
-	gameweek_data = _fetch_gameweek_leaderboard()
-	captain_leaderboard, _leaderboard_status, _leaderboard_error = _fetch_captain_leaderboard()
-	monthly_data = _fetch_monthly_leaderboard()
 	context = {
 		**base_context,
-		**dashboard_data,
-		'top3_classic': classic_data['classic_rows'][:3],
-		'top3_gameweek': gameweek_data['entries'][:3],
-		'top3_gameweek_label': f"GW {gameweek_data['selected_gameweek']}" if gameweek_data.get('selected_gameweek') else '',
-		'top3_captain': captain_leaderboard[:3],
-		'top3_monthly': monthly_data['monthly_rankings'][:3],
-		'top3_monthly_label': monthly_data.get('selected_month_label') or '',
+		'top_players': [],
+		'top_scorer': None,
+		'top_assister': None,
+		'top_clean_sheet': None,
+		'fixtures': [],
+		'live_fixtures': [],
+		'live_fixtures_label': 'Upcoming',
+		'top3_classic': [],
+		'top3_gameweek': [],
+		'top3_gameweek_label': '',
+		'top3_captain': [],
+		'top3_monthly': [],
+		'top3_monthly_label': '',
 	}
 	return render(request, 'fantasy/home.html', context)
 
@@ -1447,6 +1452,10 @@ def league_live_data(request):
 			'status': leaderboard_status,
 			'error': leaderboard_error,
 		}
+
+	if section in ('dashboard', 'all'):
+		dashboard_data = _fetch_dashboard_data()
+		response['dashboard'] = dashboard_data
 
 	return JsonResponse(response)
 

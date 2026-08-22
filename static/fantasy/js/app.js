@@ -390,6 +390,150 @@ document.addEventListener('DOMContentLoaded', () => {
                 .join('');
         };
 
+        const medalFor = (rank) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`);
+
+        const renderMiniLeaders = (selector, rows, scoreKey) => {
+            const list = document.querySelector(selector);
+            if (!list) {
+                return;
+            }
+            const top3 = (rows || []).slice(0, 3);
+            if (!top3.length) {
+                list.innerHTML = '<li class="mini-leaders__empty">No data yet</li>';
+                return;
+            }
+            list.innerHTML = top3
+                .map((row) => `
+                    <li${row.rank === 1 ? ' class="mini-leaders__item--first"' : ''}>
+                        <span class="mini-leaders__rank">${medalFor(row.rank)}</span>
+                        <span class="mini-leaders__name">${row.manager_name}</span>
+                        <span class="mini-leaders__score">${row[scoreKey]}</span>
+                    </li>
+                `)
+                .join('');
+        };
+
+        const renderStatSpotlight = (selector, stat, unitLabel, valueKey) => {
+            const container = document.querySelector(selector);
+            if (!container) {
+                return;
+            }
+            if (!stat) {
+                container.innerHTML = '<div class="player-fallback">-</div><p class="stat-name">No data</p><p class="stat-value">-</p>';
+                return;
+            }
+            const image = stat.photo_url
+                ? `<img src="${stat.photo_url}" alt="${stat.name}">`
+                : `<div class="player-fallback">${(stat.name || '-').slice(0, 1)}</div>`;
+            container.innerHTML = `${image}<p class="stat-name">${stat.name}</p><p class="stat-value">${stat[valueKey] || 0} ${unitLabel}</p>`;
+        };
+
+        const renderHome = (payload) => {
+            const classicRows = (payload.classic && payload.classic.rows) || [];
+            renderMiniLeaders('[data-home-classic-list]', classicRows, 'total_points');
+
+            const gameweekData = payload.gameweek;
+            if (gameweekData) {
+                renderMiniLeaders('[data-home-gameweek-list]', gameweekData.entries, 'gameweek_points');
+                const gwLabel = document.querySelector('[data-home-gameweek-label]');
+                if (gwLabel) {
+                    gwLabel.textContent = gameweekData.selected_gameweek ? ` · GW${gameweekData.selected_gameweek}` : '';
+                }
+            }
+
+            const captainRows = (payload.captain && payload.captain.leaderboard) || [];
+            renderMiniLeaders('[data-home-captain-list]', captainRows, 'captain_points');
+
+            const monthlyData = payload.monthly;
+            if (monthlyData) {
+                renderMiniLeaders('[data-home-monthly-list]', monthlyData.rankings, 'monthly_points');
+                const monthLabel = document.querySelector('[data-home-monthly-label]');
+                if (monthLabel) {
+                    monthLabel.textContent = monthlyData.selected_month_label ? ` · ${monthlyData.selected_month_label}` : '';
+                }
+            }
+
+            const dashboard = payload.dashboard;
+            if (!dashboard) {
+                return;
+            }
+
+            renderStatSpotlight('[data-home-top-scorer]', dashboard.top_scorer, 'Goals', 'goals');
+            renderStatSpotlight('[data-home-top-assister]', dashboard.top_assister, 'Assists', 'assists');
+            renderStatSpotlight('[data-home-top-clean-sheet]', dashboard.top_clean_sheet, 'Clean Sheets', 'clean_sheets');
+
+            const liveLabel = document.querySelector('[data-home-live-fixtures-label]');
+            if (liveLabel) {
+                liveLabel.textContent = dashboard.live_fixtures_label || 'Upcoming';
+            }
+
+            const liveGrid = document.querySelector('[data-home-live-fixtures-grid]');
+            if (liveGrid) {
+                const liveFixtures = dashboard.live_fixtures || [];
+                if (!liveFixtures.length) {
+                    liveGrid.innerHTML = '<article class="live-fixture-card"><p>No live fixture data available right now.</p></article>';
+                } else {
+                    liveGrid.innerHTML = liveFixtures
+                        .map((fixture) => `
+                            <article class="live-fixture-card">
+                                <div class="fixture-teams">
+                                    <div class="fixture-team">
+                                        ${fixture.home_team.shirt_url ? `<img class="fixture-team__shirt" src="${fixture.home_team.shirt_url}" alt="${fixture.home_team.short_name} shirt" loading="lazy">` : ''}
+                                        <strong>${fixture.home_team.short_name}</strong>
+                                    </div>
+                                    <span>vs</span>
+                                    <div class="fixture-team">
+                                        ${fixture.away_team.shirt_url ? `<img class="fixture-team__shirt" src="${fixture.away_team.shirt_url}" alt="${fixture.away_team.short_name} shirt" loading="lazy">` : ''}
+                                        <strong>${fixture.away_team.short_name}</strong>
+                                    </div>
+                                </div>
+                                <div class="fixture-status${fixture.status === 'LIVE' ? ' fixture-status--live' : ''}">${fixture.status}</div>
+                                ${fixture.status === 'Upcoming'
+                                    ? `<p>${fixture.kickoff_display}</p>`
+                                    : `<p class="fixture-score">${fixture.home_score || 0} - ${fixture.away_score || 0}</p>`}
+                            </article>
+                        `)
+                        .join('');
+                }
+            }
+
+            const topPicksRows = document.querySelector('[data-home-top-picks-rows]');
+            if (topPicksRows) {
+                const players = dashboard.top_players || [];
+                topPicksRows.innerHTML = players.length
+                    ? players
+                        .map((player) => `
+                            <tr>
+                                <td>${player.name} <small>${player.team_short_name}</small></td>
+                                <td>${player.position_label}</td>
+                                <td>${player.price}</td>
+                                <td>${player.total_points}</td>
+                                <td>${player.selected_by_percent}%</td>
+                            </tr>
+                        `)
+                        .join('')
+                    : '<tr><td colspan="5">No player data available right now.</td></tr>';
+            }
+
+            const fixturesList = document.querySelector('[data-home-fixtures-list]');
+            if (fixturesList) {
+                const fixtures = dashboard.fixtures || [];
+                fixturesList.innerHTML = fixtures.length
+                    ? fixtures
+                        .map((fixture) => `
+                            <li>
+                                <div>
+                                    <p>${fixture.home_team.short_name} vs ${fixture.away_team.short_name}</p>
+                                    <small>${fixture.kickoff_display}</small>
+                                </div>
+                                <span class="difficulty difficulty-${fixture.difficulty}">D${fixture.difficulty}</span>
+                            </li>
+                        `)
+                        .join('')
+                    : '<li><div><p>No fixture data available right now.</p></div></li>';
+            }
+        };
+
         const sectionForPageType = {
             classic: 'classic',
             gameweek: 'gameweek',
@@ -445,6 +589,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderMonthly(payload);
                 } else if (pageType === 'captain') {
                     renderCaptain(payload);
+                } else if (pageType === 'home') {
+                    renderHome(payload);
                 }
             } catch (err) {
                 // Silent fail: keep whatever's already shown if a fetch fails.
