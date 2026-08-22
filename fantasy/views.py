@@ -5,7 +5,7 @@ from urllib import error, request
 from zoneinfo import ZoneInfo
 
 from django.core.cache import cache
-from django.db.models import F, Sum
+from django.db.models import F, Max, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -617,41 +617,103 @@ def _fetch_league_entry_rows(league_id: int) -> tuple[list[dict], bool]:
 
 
 def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
+	"""Classic League standings, built the same way as Gameweek Winners /
+	Manager of the Month / Captain Mode: each entry's season total and
+	latest-gameweek points come from CaptainGameweekScore's stored
+	finished-gameweek totals plus a live per-entry fetch for whichever
+	gameweek is still in progress - not from FPL's own classic-league
+	standings 'total'/'event_total' fields. FPL only refreshes those on its
+	own batch schedule, well behind live play, so trusting them made this
+	page disagree with every other page on the site (sometimes by dozens
+	of points) while a gameweek was live. Rank is then recomputed from the
+	fresh totals too, since FPL's own 'rank' field lags for the same
+	reason and would otherwise no longer match the points shown."""
 	try:
 		standings_raw, first_payload = _fetch_league_pages(league_id, 'page_standings', 'standings')
 		league_name = first_payload.get('league', {}).get('name', f'FPL League {league_id}')
 
-		rows = []
-		for index, item in enumerate(standings_raw, start=1):
-			manager_name = item.get('player_name', '').strip() or 'Unknown Manager'
-			rows.append(
-				{
-					'rank': item.get('rank') or index,
-					'manager_name': manager_name,
-					'team_name': item.get('entry_name', 'Unknown Team'),
-					'total_points': item.get('total', 0),
-					'gameweek_points': item.get('event_total', 0),
-				}
+		using_new_entries = False
+		entry_rows = standings_raw
+		if not entry_rows:
+			entry_rows, _ = _fetch_league_pages(league_id, 'page_new_entries', 'new_entries')
+			using_new_entries = True
+
+		if not entry_rows:
+			return [], league_name, 'League fetched, but no members were returned yet.'
+
+		managers: dict[int, dict] = {}
+		for item in entry_rows:
+			entry_id = item.get('entry')
+			if not entry_id:
+				continue
+			if using_new_entries:
+				manager_name = f"{item.get('player_first_name', '')} {item.get('player_last_name', '')}".strip() or 'New Manager'
+			else:
+				manager_name = item.get('player_name', '').strip() or 'Unknown Manager'
+			managers[entry_id] = {
+				'entry_id': entry_id,
+				'manager_name': manager_name,
+				'team_name': item.get('entry_name', 'Unknown Team'),
+				'total_points': 0,
+				'gameweek_points': 0,
+			}
+
+		if not using_new_entries:
+			bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+			current_event = next((event for event in bootstrap.get('events', []) if event.get('is_current')), None)
+			current_gameweek = current_event.get('id') if current_event else None
+
+			stored_totals = (
+				CaptainGameweekScore.objects.filter(entry_id__in=managers.keys())
+				.values('entry_id')
+				.annotate(total=Sum('gameweek_points'))
 			)
+			for row in stored_totals:
+				if row['entry_id'] in managers:
+					managers[row['entry_id']]['total_points'] = row['total'] or 0
 
-		if rows:
-			return rows, league_name, None
+			latest_finished_gameweek = CaptainGameweekScore.objects.filter(
+				entry_id__in=managers.keys()
+			).aggregate(latest=Max('gameweek'))['latest']
+			if latest_finished_gameweek:
+				latest_gw_points = CaptainGameweekScore.objects.filter(
+					entry_id__in=managers.keys(), gameweek=latest_finished_gameweek
+				).values_list('entry_id', 'gameweek_points')
+				for entry_id, points in latest_gw_points:
+					if entry_id in managers:
+						managers[entry_id]['gameweek_points'] = points
 
-		new_entries_raw, _ = _fetch_league_pages(league_id, 'page_new_entries', 'new_entries')
-		for index, item in enumerate(new_entries_raw, start=1):
-			full_name = f"{item.get('player_first_name', '')} {item.get('player_last_name', '')}".strip()
-			rows.append(
-				{
-					'rank': index,
-					'manager_name': full_name or 'New Manager',
-					'team_name': item.get('entry_name', 'Unknown Team'),
-					'total_points': 0,
-					'gameweek_points': 0,
-				}
-			)
+			if current_gameweek:
+				def fetch_one(entry_id: int) -> tuple[int, int] | None:
+					try:
+						picks_payload = _get_json(
+							f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
+						)
+						return entry_id, picks_payload.get('entry_history', {}).get('points', 0)
+					except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+						return None
 
-		message = None if rows else 'League fetched, but no members were returned yet.'
-		return rows, league_name, message
+				with ThreadPoolExecutor(max_workers=15) as executor:
+					futures = [executor.submit(fetch_one, entry_id) for entry_id in managers]
+					for future in as_completed(futures):
+						result = future.result()
+						if result:
+							entry_id, points = result
+							managers[entry_id]['gameweek_points'] = points
+							managers[entry_id]['total_points'] += points
+
+		entries = list(managers.values())
+		if using_new_entries:
+			# Pre-season, nobody has scored yet - rank by join order instead
+			# of tying everyone at #1 on 0 points.
+			for index, row in enumerate(entries, start=1):
+				row['rank'] = index
+		else:
+			entries.sort(key=lambda row: row['total_points'], reverse=True)
+			for row in entries:
+				row['rank'] = 1 + sum(1 for other in entries if other['total_points'] > row['total_points'])
+
+		return entries, league_name, None
 	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
 		return [], f'FPL League {league_id}', 'Live league data unavailable. Showing local data.'
 
@@ -1396,18 +1458,25 @@ def manager_of_the_month(request):
 
 
 def classic_league(request):
+	# Rendered empty and filled in by JS right after load, same pattern as
+	# Captain Mode/Gameweek Winners/Manager of the Month - the standings
+	# fetch now includes a live per-manager fan-out for the in-progress
+	# gameweek (see _fetch_fpl_league_entries_live), so it's no longer
+	# cheap enough to compute synchronously on every page load.
 	base_context = _base_page_context('classic_league')
-	rows, league_name, league_error, league_source = _resolved_league_dataset()
-	classic_data = _build_classic_data(rows)
 	season_finished = _is_season_finished()
-	classic_rows = classic_data.get('classic_rows') or []
-	classic_season_winner = classic_rows[0] if season_finished and classic_rows else None
+	classic_season_winner = None
+	if season_finished:
+		rows, _league_name, _league_error, _league_source = _resolved_league_dataset()
+		classic_rows_sync = _build_classic_data(rows).get('classic_rows') or []
+		classic_season_winner = classic_rows_sync[0] if classic_rows_sync else None
 	context = {
 		**base_context,
-		**classic_data,
-		'league_name': league_name,
-		'league_error': league_error,
-		'league_source': league_source,
+		'leader_points': 0,
+		'classic_rows': [],
+		'league_name': '',
+		'league_error': None,
+		'league_source': None,
 		'page_ad': _page_ad(PageAdvertisement.Page.CLASSIC_LEAGUE),
 		'season_finished': season_finished,
 		'classic_season_winner': classic_season_winner,
