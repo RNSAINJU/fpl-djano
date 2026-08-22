@@ -2,6 +2,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from urllib import error, request
+from zoneinfo import ZoneInfo
 
 from django.core.cache import cache
 from django.db.models import F, Sum
@@ -21,6 +22,10 @@ from .models import (
 
 FPL_CLASSIC_LEAGUE_ID = 6232
 
+# Fixture kickoff times come from the FPL API in UTC. The dashboard displays
+# them in Nepal time (Kathmandu, UTC+5:45) rather than the site's UTC clock.
+NEPAL_TZ = ZoneInfo('Asia/Kathmandu')
+
 # How long live FPL data (league standings, captain/monthly leaderboards,
 # dashboard) is cached before the next request re-fetches it live. A cache
 # miss on these means fanning out to dozens of live FPL API calls, which
@@ -39,6 +44,14 @@ def _photo_url_from_code(code: int | str | None) -> str:
 	if not code:
 		return ''
 	return f'https://resources.premierleague.com/premierleague/photos/players/250x250/p{code}.png'
+
+
+def _shirt_url_from_code(code: int | str | None) -> str:
+	"""The FPL app's own 3D-rendered team jersey icon, keyed by each team's
+	`code` field from bootstrap-static (not its `id`)."""
+	if not code:
+		return ''
+	return f'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_{code}-66.png'
 
 
 def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
@@ -420,16 +433,18 @@ def _fetch_dashboard_data_live() -> dict:
 			kickoff_display = '-'
 			if kickoff_iso:
 				kickoff_dt = datetime.fromisoformat(kickoff_iso.replace('Z', '+00:00'))
-				kickoff_display = timezone.localtime(kickoff_dt).strftime('%d %b, %H:%M')
+				kickoff_display = kickoff_dt.astimezone(NEPAL_TZ).strftime('%d %b, %H:%M') + ' NPT'
 			upcoming_fixtures.append(
 				{
 					'home_team': {
 						'short_name': home_team.get('short_name', '-'),
 						'badge': home_team.get('short_name', 'H')[:1],
+						'shirt_url': _shirt_url_from_code(home_team.get('code')),
 					},
 					'away_team': {
 						'short_name': away_team.get('short_name', '-'),
 						'badge': away_team.get('short_name', 'A')[:1],
+						'shirt_url': _shirt_url_from_code(away_team.get('code')),
 					},
 					'kickoff_display': kickoff_display,
 					'gameweek': fixture.get('event') or '-',

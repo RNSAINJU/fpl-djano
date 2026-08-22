@@ -548,7 +548,7 @@ body {
 
 .fixture-teams {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 6px;
     margin-bottom: 8px;
@@ -561,6 +561,27 @@ body {
 .fixture-teams span {
     color: #cab9ef;
     font-size: 13px;
+    /* The jersey (44px) is the visual anchor of each team column, so "vs"
+       is nudged down to sit level with the jersey's own vertical center
+       instead of the center of the whole image+name stack - lining it up
+       against the full column left it looking pulled up above "vs". */
+    margin-top: 14px;
+}
+
+.fixture-team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+}
+
+.fixture-team__shirt {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
 }
 
 .fixture-status {
@@ -1167,6 +1188,15 @@ td small {
     .topbar-button {
         padding: 8px 10px;
         font-size: 13px;
+    }
+
+    .fixture-team__shirt {
+        width: 38px;
+        height: 38px;
+    }
+
+    .fixture-teams span {
+        margin-top: 12px;
     }
 
     .team-hero,

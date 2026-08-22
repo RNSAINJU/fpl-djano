@@ -116,9 +116,15 @@
                     {% for fixture in live_fixtures %}
                     <article class="live-fixture-card">
                         <div class="fixture-teams">
-                            <strong>{{ fixture.home_team.short_name }}</strong>
+                            <div class="fixture-team">
+                                {% if fixture.home_team.shirt_url %}<img class="fixture-team__shirt" src="{{ fixture.home_team.shirt_url }}" alt="{{ fixture.home_team.short_name }} shirt" loading="lazy">{% endif %}
+                                <strong>{{ fixture.home_team.short_name }}</strong>
+                            </div>
                             <span>vs</span>
-                            <strong>{{ fixture.away_team.short_name }}</strong>
+                            <div class="fixture-team">
+                                {% if fixture.away_team.shirt_url %}<img class="fixture-team__shirt" src="{{ fixture.away_team.shirt_url }}" alt="{{ fixture.away_team.short_name }} shirt" loading="lazy">{% endif %}
+                                <strong>{{ fixture.away_team.short_name }}</strong>
+                            </div>
                         </div>
                         <div class="fixture-status{% if fixture.status == 'LIVE' %} fixture-status--live{% endif %}">{{ fixture.status }}</div>
                         {% if fixture.status == 'Upcoming' %}
