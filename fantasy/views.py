@@ -1227,10 +1227,20 @@ def home(request):
 	base_context = _base_page_context('home')
 	dashboard_data = _fetch_dashboard_data()
 	rows, _, _, _ = _resolved_league_dataset()
+	classic_data = _build_classic_data(rows)
+	gameweek_data = _fetch_gameweek_leaderboard()
+	captain_leaderboard, _leaderboard_status, _leaderboard_error = _fetch_captain_leaderboard()
+	monthly_data = _fetch_monthly_leaderboard()
 	context = {
 		**base_context,
 		**dashboard_data,
 		'standings': rows[:5],
+		'top3_classic': classic_data['classic_rows'][:3],
+		'top3_gameweek': gameweek_data['entries'][:3],
+		'top3_gameweek_label': f"GW {gameweek_data['selected_gameweek']}" if gameweek_data.get('selected_gameweek') else '',
+		'top3_captain': captain_leaderboard[:3],
+		'top3_monthly': monthly_data['monthly_rankings'][:3],
+		'top3_monthly_label': monthly_data.get('selected_month_label') or '',
 	}
 	return render(request, 'fantasy/home.html', context)
 

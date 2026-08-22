@@ -45,17 +45,69 @@
             </section>
 
             <section class="status-grid">
-                <article class="season-card reveal">
-                    <div class="ball-icon">O</div>
-                    <h4>{{ season_message }}</h4>
-                    <p>Your live points, rank and players will appear here as soon as the gameweek begins. Make sure your squad is set before the deadline.</p>
-                    <div class="countdown" data-target="{{ deadline_iso }}">
-                        <div><strong data-count="days">00</strong><span>Days</span></div>
-                        <div><strong data-count="hours">00</strong><span>Hrs</span></div>
-                        <div><strong data-count="minutes">00</strong><span>Min</span></div>
-                        <div><strong data-count="seconds">00</strong><span>Sec</span></div>
+                <article class="season-card season-card--leaders reveal">
+                    <h4>Current Leaders</h4>
+                    <div class="mini-leaders-grid">
+                        <div class="mini-leaders">
+                            <a class="mini-leaders__title" href="{% url 'fantasy:classic_league' %}">Classic League</a>
+                            <ol class="mini-leaders__list">
+                                {% for row in top3_classic %}
+                                <li>
+                                    <span class="mini-leaders__rank">#{{ row.rank }}</span>
+                                    <span class="mini-leaders__name">{{ row.manager_name }}</span>
+                                    <span class="mini-leaders__score">{{ row.total_points }}</span>
+                                </li>
+                                {% empty %}
+                                <li class="mini-leaders__empty">No data yet</li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+
+                        <div class="mini-leaders">
+                            <a class="mini-leaders__title" href="{% url 'fantasy:gameweek_winners' %}">Gameweek Winners{% if top3_gameweek_label %} &middot; {{ top3_gameweek_label }}{% endif %}</a>
+                            <ol class="mini-leaders__list">
+                                {% for row in top3_gameweek %}
+                                <li>
+                                    <span class="mini-leaders__rank">#{{ row.rank }}</span>
+                                    <span class="mini-leaders__name">{{ row.manager_name }}</span>
+                                    <span class="mini-leaders__score">{{ row.gameweek_points }}</span>
+                                </li>
+                                {% empty %}
+                                <li class="mini-leaders__empty">No data yet</li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+
+                        <div class="mini-leaders">
+                            <a class="mini-leaders__title" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
+                            <ol class="mini-leaders__list">
+                                {% for row in top3_captain %}
+                                <li>
+                                    <span class="mini-leaders__rank">#{{ row.rank }}</span>
+                                    <span class="mini-leaders__name">{{ row.manager_name }}</span>
+                                    <span class="mini-leaders__score">{{ row.captain_points }}</span>
+                                </li>
+                                {% empty %}
+                                <li class="mini-leaders__empty">No data yet</li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+
+                        <div class="mini-leaders">
+                            <a class="mini-leaders__title" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month{% if top3_monthly_label %} &middot; {{ top3_monthly_label }}{% endif %}</a>
+                            <ol class="mini-leaders__list">
+                                {% for row in top3_monthly %}
+                                <li>
+                                    <span class="mini-leaders__rank">#{{ row.rank }}</span>
+                                    <span class="mini-leaders__name">{{ row.manager_name }}</span>
+                                    <span class="mini-leaders__score">{{ row.monthly_points }}</span>
+                                </li>
+                                {% empty %}
+                                <li class="mini-leaders__empty">No data yet</li>
+                                {% endfor %}
+                            </ol>
+                        </div>
                     </div>
-                    <p class="deadline">{{ gameweek_name }} deadline: {{ deadline_display }}</p>
                 </article>
 
                 <article class="tracker-card reveal">

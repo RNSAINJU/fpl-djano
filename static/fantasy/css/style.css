@@ -321,6 +321,76 @@ body {
     font-size: 14px;
 }
 
+.mini-leaders-grid {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 20px;
+}
+
+.mini-leaders__title {
+    display: block;
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dark);
+    text-decoration: none;
+    border-bottom: 1px solid var(--outline);
+    padding-bottom: 6px;
+}
+
+.mini-leaders__title:hover {
+    color: var(--brand);
+}
+
+.mini-leaders__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.mini-leaders__list li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.mini-leaders__rank {
+    flex-shrink: 0;
+    width: 22px;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.mini-leaders__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mini-leaders__score {
+    flex-shrink: 0;
+    font-weight: 700;
+    color: var(--brand);
+}
+
+.mini-leaders__empty {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 620px) {
+    .mini-leaders-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+}
+
 .tracker-card--wide {
     grid-column: span 2;
 }
