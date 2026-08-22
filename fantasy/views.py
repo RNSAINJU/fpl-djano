@@ -54,6 +54,40 @@ def _shirt_url_from_code(code: int | str | None) -> str:
 	return f'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_{code}-66.png'
 
 
+def _fetch_live_element_points(gameweek: int) -> dict[int, int]:
+	"""Maps element (player) id -> that player's live total_points for the
+	given gameweek, from /event/{gw}/live/ - the source FPL actually keeps
+	current as bonus points are calculated during a match. A manager's own
+	/entry/{id}/event/{gw}/picks/ response also carries an entry_history
+	total, but that field is computed on a much slower cycle and was found
+	to lag the true live score by dozens of points during an active
+	gameweek - so gameweek/monthly/classic-league totals are recomputed
+	from this player-level data instead of trusting that field."""
+	try:
+		live_payload = _get_json(f'https://fantasy.premierleague.com/api/event/{gameweek}/live/')
+		return {
+			element.get('id'): element.get('stats', {}).get('total_points', 0)
+			for element in live_payload.get('elements', [])
+		}
+	except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+		return {}
+
+
+def _live_net_gameweek_points(picks_payload: dict, live_points_by_player: dict[int, int]) -> int:
+	"""One entry's net gameweek score - each starting pick's live points
+	(bench picks carry multiplier 0 so contribute nothing) times its
+	multiplier (2x/3x for captain/triple-captain), minus that gameweek's
+	transfer hit cost. The hit cost itself isn't a live-changing number
+	(it's fixed once transfers are locked in for the gameweek) so it's
+	still read straight from entry_history."""
+	picks = picks_payload.get('picks', [])
+	gross = sum(
+		live_points_by_player.get(pick.get('element'), 0) * (pick.get('multiplier') or 0) for pick in picks
+	)
+	hits = picks_payload.get('entry_history', {}).get('event_transfers_cost', 0)
+	return gross - hits
+
+
 def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
 	base_url = 'https://fantasy.premierleague.com/api'
 	try:
@@ -684,12 +718,14 @@ def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tu
 						managers[entry_id]['gameweek_points'] = points
 
 			if current_gameweek:
+				live_points_by_player = _fetch_live_element_points(current_gameweek)
+
 				def fetch_one(entry_id: int) -> tuple[int, int] | None:
 					try:
 						picks_payload = _get_json(
 							f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
 						)
-						return entry_id, picks_payload.get('entry_history', {}).get('points', 0)
+						return entry_id, _live_net_gameweek_points(picks_payload, live_points_by_player)
 					except (error.HTTPError, error.URLError, ValueError, TimeoutError):
 						return None
 
@@ -800,13 +836,7 @@ def _fetch_captain_leaderboard_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> t
 		# Add the currently in-progress gameweek's live points on top, if any.
 		if current_gameweek:
 			player_name_lookup = {el['id']: el.get('web_name', 'Unknown') for el in bootstrap.get('elements', [])}
-			live_points_by_player: dict[int, int] = {}
-			try:
-				live_payload = _get_json(f'https://fantasy.premierleague.com/api/event/{current_gameweek}/live/')
-				for element in live_payload.get('elements', []):
-					live_points_by_player[element.get('id')] = element.get('stats', {}).get('total_points', 0)
-			except (error.HTTPError, error.URLError, ValueError, TimeoutError):
-				live_points_by_player = {}
+			live_points_by_player = _fetch_live_element_points(current_gameweek)
 
 			def fetch_one(entry_id: int) -> tuple[int, str, int] | None:
 				try:
@@ -966,12 +996,14 @@ def _fetch_gameweek_leaderboard_live(
 				managers[row['entry_id']]['total_points'] = row['total'] or 0
 
 		if selected_gameweek == current_gameweek:
+			live_points_by_player = _fetch_live_element_points(current_gameweek)
+
 			def fetch_one(entry_id: int) -> tuple[int, int] | None:
 				try:
 					picks_payload = _get_json(
 						f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
 					)
-					return entry_id, picks_payload.get('entry_history', {}).get('points', 0)
+					return entry_id, _live_net_gameweek_points(picks_payload, live_points_by_player)
 				except (error.HTTPError, error.URLError, ValueError, TimeoutError):
 					return None
 
@@ -1134,13 +1166,16 @@ def _fetch_monthly_leaderboard_live(
 				managers[row['entry_id']]['monthly_hits'] += row['hits_total'] or 0
 
 		if current_gameweek and gameweek_month_map.get(current_gameweek) == selected_month:
+			live_points_by_player = _fetch_live_element_points(current_gameweek)
+
 			def fetch_one(entry_id: int) -> tuple[int, int, int] | None:
 				try:
 					picks_payload = _get_json(
 						f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
 					)
-					entry_history = picks_payload.get('entry_history', {})
-					return entry_id, entry_history.get('points', 0), entry_history.get('event_transfers_cost', 0)
+					net_points = _live_net_gameweek_points(picks_payload, live_points_by_player)
+					hits = picks_payload.get('entry_history', {}).get('event_transfers_cost', 0)
+					return entry_id, net_points, hits
 				except (error.HTTPError, error.URLError, ValueError, TimeoutError):
 					return None
 
@@ -1149,8 +1184,8 @@ def _fetch_monthly_leaderboard_live(
 				for future in as_completed(futures):
 					result = future.result()
 					if result:
-						entry_id, points, hits = result
-						managers[entry_id]['monthly_points'] += points - hits
+						entry_id, net_points, hits = result
+						managers[entry_id]['monthly_points'] += net_points
 						managers[entry_id]['monthly_hits'] += hits
 
 		leaderboard = list(managers.values())
