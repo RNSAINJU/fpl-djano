@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const rows = data.rankings || [];
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="6">No rankings available yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5">No rankings available yet.</td></tr>';
                 return;
             }
 
@@ -339,7 +339,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>#${row.rank}</td>
                         <td>${row.manager_name}</td>
                         <td>${row.team_name}</td>
-                        <td>#${row.league_rank}</td>
                         <td>${row.monthly_hits ? `-${row.monthly_hits}` : '0'}</td>
                         <td>${row.monthly_points}</td>
                     </tr>

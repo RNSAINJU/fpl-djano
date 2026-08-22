@@ -91,7 +91,6 @@
                                 <th>Rank</th>
                                 <th>Manager</th>
                                 <th>Team</th>
-                                <th>League Pos</th>
                                 <th>Hits</th>
                                 <th>Monthly Points</th>
                             </tr>
@@ -102,13 +101,12 @@
                                 <td>#{{ item.rank }}</td>
                                 <td>{{ item.manager_name }}</td>
                                 <td>{{ item.team_name }}</td>
-                                <td>#{{ item.league_rank }}</td>
                                 <td>{% if item.monthly_hits %}-{{ item.monthly_hits }}{% else %}0{% endif %}</td>
                                 <td>{{ item.monthly_points }}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6">Loading monthly rankings…</td>
+                                <td colspan="5">Loading monthly rankings…</td>
                             </tr>
                             {% endfor %}
                         </tbody>
