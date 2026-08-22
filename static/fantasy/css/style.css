@@ -1166,19 +1166,29 @@ td small {
     font-weight: 700;
 }
 
-.status-pill--safe {
+.status-pill--fire {
+    background: rgba(230, 57, 27, 0.16);
+    color: #b7311a;
+}
+
+.status-pill--hot {
     background: rgba(23, 163, 74, 0.16);
     color: #12733a;
 }
 
 .status-pill--steady {
-    background: rgba(45, 129, 208, 0.16);
-    color: #1c5f9e;
+    background: rgba(217, 164, 6, 0.18);
+    color: #8a6a04;
 }
 
-.status-pill--chasing {
-    background: rgba(215, 71, 71, 0.16);
-    color: #9a2727;
+.status-pill--cooling {
+    background: rgba(232, 130, 33, 0.18);
+    color: #9a5510;
+}
+
+.status-pill--cold {
+    background: rgba(45, 129, 208, 0.16);
+    color: #1c5f9e;
 }
 
 .reveal {

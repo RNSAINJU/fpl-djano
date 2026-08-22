@@ -78,7 +78,6 @@
                                 <th>Manager</th>
                                 <th>Team</th>
                                 <th>Total Points</th>
-                                <th>Gap</th>
                                 <th>Form</th>
                             </tr>
                         </thead>
@@ -89,16 +88,15 @@
                                 <td>{{ row.manager_name }}</td>
                                 <td>{{ row.team_name }}</td>
                                 <td>{{ row.total_points }}</td>
-                                <td>{{ row.gap_to_leader }}</td>
                                 <td>
-                                    <span class="status-pill {% if row.form == 'Hot' %}status-pill--safe{% elif row.form == 'Steady' %}status-pill--steady{% else %}status-pill--chasing{% endif %}">
-                                        {{ row.form }}
+                                    <span class="status-pill {% if row.form == 'On Fire' %}status-pill--fire{% elif row.form == 'Hot' %}status-pill--hot{% elif row.form == 'Steady' %}status-pill--steady{% elif row.form == 'Cooling' %}status-pill--cooling{% else %}status-pill--cold{% endif %}">
+                                        {{ row.form_emoji }} {{ row.form }}
                                     </span>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6">No league standings available yet.</td>
+                                <td colspan="5">No league standings available yet.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

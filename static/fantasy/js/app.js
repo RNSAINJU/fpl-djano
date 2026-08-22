@@ -152,25 +152,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const rows = payload.classic.rows || [];
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="6">No league standings available yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5">No league standings available yet.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = rows
                 .map((row) => {
-                    const formClass = row.form === 'Hot'
-                        ? 'status-pill--safe'
-                        : row.form === 'Steady'
-                            ? 'status-pill--steady'
-                            : 'status-pill--chasing';
+                    const formClass = row.form === 'On Fire'
+                        ? 'status-pill--fire'
+                        : row.form === 'Hot'
+                            ? 'status-pill--hot'
+                            : row.form === 'Steady'
+                                ? 'status-pill--steady'
+                                : row.form === 'Cooling'
+                                    ? 'status-pill--cooling'
+                                    : 'status-pill--cold';
                     return `
                         <tr>
                             <td>#${row.rank}</td>
                             <td>${row.manager_name}</td>
                             <td>${row.team_name}</td>
                             <td>${row.total_points}</td>
-                            <td>${row.gap_to_leader}</td>
-                            <td><span class="status-pill ${formClass}">${row.form}</span></td>
+                            <td><span class="status-pill ${formClass}">${row.form_emoji} ${row.form}</span></td>
                         </tr>
                     `;
                 })

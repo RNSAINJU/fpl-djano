@@ -1109,21 +1109,36 @@ def _fetch_monthly_leaderboard_live(
 		return {**empty, 'monthly_error': 'Monthly leaderboard temporarily unavailable.'}
 
 
+def _form_for_gameweek_points(gameweek_points: int) -> tuple[str, str]:
+	"""Five-tier recent-form label (and matching emoji) for a manager's
+	latest gameweek score, from best to worst:
+	On Fire (excellent/consistently high) > Hot (strong) > Steady
+	(average/consistent) > Cooling (recent drop) > Cold (poor/low points)."""
+	if gameweek_points >= 80:
+		return 'On Fire', '🔥'
+	if gameweek_points >= 65:
+		return 'Hot', '🟢'
+	if gameweek_points >= 50:
+		return 'Steady', '🟡'
+	if gameweek_points >= 35:
+		return 'Cooling', '🟠'
+	return 'Cold', '🔵'
+
+
 def _build_classic_data(rows: list[dict]) -> dict:
 	sorted_rows = sorted(rows, key=lambda row: row['rank'])
 	leader_points = sorted_rows[0]['total_points'] if sorted_rows else 0
 	classic_rows = []
 	for row in sorted_rows:
-		gap = leader_points - row['total_points']
-		form = 'Hot' if row['gameweek_points'] >= 70 else 'Steady' if row['gameweek_points'] >= 60 else 'Cold'
+		form, form_emoji = _form_for_gameweek_points(row['gameweek_points'])
 		classic_rows.append(
 			{
 				'rank': row['rank'],
 				'manager_name': row['manager_name'],
 				'team_name': row['team_name'],
 				'total_points': row['total_points'],
-				'gap_to_leader': gap,
 				'form': form,
+				'form_emoji': form_emoji,
 			}
 		)
 
