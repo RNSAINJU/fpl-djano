@@ -325,18 +325,49 @@ body {
     margin-top: 14px;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px 20px;
+    gap: 14px;
+}
+
+.mini-leaders {
+    background: var(--surface-soft);
+    border: 1px solid var(--outline);
+    border-top: 3px solid var(--brand);
+    border-radius: 14px;
+    padding: 12px 14px 14px;
+}
+
+.mini-leaders--classic {
+    border-top-color: #37003c;
+}
+
+.mini-leaders--gameweek {
+    border-top-color: #00b368;
+}
+
+.mini-leaders--captain {
+    border-top-color: #d4a017;
+}
+
+.mini-leaders--monthly {
+    border-top-color: #2d81d0;
 }
 
 .mini-leaders__title {
-    display: block;
-    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 10px;
     font-size: 13px;
     font-weight: 700;
     color: var(--text-dark);
     text-decoration: none;
     border-bottom: 1px solid var(--outline);
-    padding-bottom: 6px;
+    padding-bottom: 8px;
+}
+
+.mini-leaders__icon {
+    font-size: 15px;
+    line-height: 1;
 }
 
 .mini-leaders__title:hover {
@@ -348,19 +379,27 @@ body {
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 6px;
+    gap: 3px;
 }
 
 .mini-leaders__list li {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     font-size: 13px;
+    padding: 5px 6px;
+    border-radius: 8px;
+}
+
+.mini-leaders__item--first {
+    background: rgba(0, 179, 104, 0.1);
 }
 
 .mini-leaders__rank {
     flex-shrink: 0;
-    width: 22px;
+    width: 24px;
+    text-align: center;
+    font-size: 14px;
     color: var(--text-muted);
     font-weight: 700;
 }
@@ -371,17 +410,39 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-weight: 500;
 }
 
 .mini-leaders__score {
     flex-shrink: 0;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--brand);
+    color: #fff;
+    font-size: 12px;
     font-weight: 700;
-    color: var(--brand);
+}
+
+.mini-leaders--classic .mini-leaders__score {
+    background: #37003c;
+}
+
+.mini-leaders--gameweek .mini-leaders__score {
+    background: #00b368;
+}
+
+.mini-leaders--captain .mini-leaders__score {
+    background: #b8860b;
+}
+
+.mini-leaders--monthly .mini-leaders__score {
+    background: #2d81d0;
 }
 
 .mini-leaders__empty {
     color: var(--text-muted);
     font-size: 13px;
+    padding: 4px 6px;
 }
 
 @media (max-width: 620px) {

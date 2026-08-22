@@ -13,11 +13,7 @@
         </div>
         <nav class="sidebar-nav">
             <p class="nav-label">Main</p>
-            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}">My Team</a>
-            <a href="{% url 'fantasy:home' %}#dashboard">Dashboard</a>
-            <a href="{% url 'fantasy:home' %}#top-picks">Players</a>
-            <a href="{% url 'fantasy:home' %}#fixtures">Compare</a>
-            <a href="{% url 'fantasy:home' %}#standings">History</a>
+            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}#dashboard">Dashboard</a>
             <p class="nav-label">FPL Bhaktapur</p>
             <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
             <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
