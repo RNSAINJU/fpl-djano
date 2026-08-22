@@ -1094,7 +1094,7 @@ def _fetch_monthly_leaderboard_live(
 
 		return {
 			'monthly_rankings': leaderboard[:15],
-			'monthly_winner': leaderboard[0] if selected_month_finished and leaderboard else None,
+			'monthly_winner': leaderboard[0] if leaderboard else None,
 			'available_months': [{'value': m, 'label': _month_label(m)} for m in available_months],
 			'selected_month': selected_month,
 			'selected_month_label': _month_label(selected_month),

@@ -563,29 +563,29 @@ body {
 }
 
 .top-stats-board {
-    border-radius: 28px;
-    padding: 22px;
+    border-radius: 22px;
+    padding: 14px;
     background: linear-gradient(120deg, #37003c, #005a37 54%, #00b368);
 }
 
 .top-stats-board h4 {
-    margin: 0 0 14px;
+    margin: 0 0 10px;
     text-align: center;
     color: #fff;
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 20px;
+    font-size: 16px;
 }
 
 .top-stats-grid {
     display: grid;
-    gap: 14px;
+    gap: 10px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .stat-spotlight {
-    border-radius: 20px;
+    border-radius: 14px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 18px;
+    padding: 10px;
     text-align: center;
     color: #f9efff;
 }
@@ -603,16 +603,16 @@ body {
 }
 
 .stat-spotlight h5 {
-    margin: 0 0 12px;
-    font-size: 20px;
+    margin: 0 0 8px;
+    font-size: 13px;
 }
 
 .stat-spotlight img,
 .player-fallback {
-    width: 160px;
-    height: 160px;
+    width: 72px;
+    height: 72px;
     margin: 0 auto;
-    border-radius: 14px;
+    border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.24);
     display: grid;
     place-items: center;
@@ -621,20 +621,20 @@ body {
 .player-fallback {
     background: rgba(255, 255, 255, 0.08);
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 48px;
+    font-size: 24px;
 }
 
 .stat-name {
-    margin: 12px 0 4px;
+    margin: 8px 0 2px;
     color: #fff;
-    font-size: 18px;
+    font-size: 14px;
     font-family: 'Space Grotesk', sans-serif;
 }
 
 .stat-value {
     margin: 0;
     color: #d7c2e9;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .live-fixtures-board {
@@ -1365,12 +1365,12 @@ td small {
 
     .stat-spotlight img,
     .player-fallback {
-        width: 120px;
-        height: 120px;
+        width: 56px;
+        height: 56px;
     }
 
     .player-fallback {
-        font-size: 38px;
+        font-size: 20px;
     }
 
     .sidebar-nav a {
