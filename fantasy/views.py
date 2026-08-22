@@ -477,7 +477,7 @@ def _fetch_dashboard_data_live() -> dict:
 				kickoff_display = '-'
 				if kickoff_iso:
 					kickoff_dt = datetime.fromisoformat(kickoff_iso.replace('Z', '+00:00'))
-					kickoff_display = timezone.localtime(kickoff_dt).strftime('%d %b, %H:%M')
+					kickoff_display = kickoff_dt.astimezone(NEPAL_TZ).strftime('%d %b, %H:%M') + ' NPT'
 
 				if fixture.get('finished'):
 					status = 'FT'
@@ -491,10 +491,12 @@ def _fetch_dashboard_data_live() -> dict:
 						'home_team': {
 							'short_name': home_team.get('short_name', '-'),
 							'badge': home_team.get('short_name', 'H')[:1],
+							'shirt_url': _shirt_url_from_code(home_team.get('code')),
 						},
 						'away_team': {
 							'short_name': away_team.get('short_name', '-'),
 							'badge': away_team.get('short_name', 'A')[:1],
+							'shirt_url': _shirt_url_from_code(away_team.get('code')),
 						},
 						'kickoff_display': kickoff_display,
 						'status': status,
