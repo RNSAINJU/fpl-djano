@@ -1430,6 +1430,37 @@ td small {
     td:nth-child(3) {
         width: 17%;
     }
+
+    /* Top Picks doesn't follow the rank/name/team shape the rule above
+       assumes - its first column is the player name (with team baked in
+       as "Haaland MCI"), not a short rank, so it needs the most room here
+       instead of the least. All 5 columns are sized explicitly rather
+       than leaving some to an equal leftover share, since "Selected" is
+       one unbreakable word that didn't quite fit in its leftover 15%. */
+    #top-picks table th:first-child,
+    #top-picks table td:first-child {
+        width: 36%;
+    }
+
+    #top-picks table th:nth-child(2),
+    #top-picks table td:nth-child(2) {
+        width: 13%;
+    }
+
+    #top-picks table th:nth-child(3),
+    #top-picks table td:nth-child(3) {
+        width: 15%;
+    }
+
+    #top-picks table th:nth-child(4),
+    #top-picks table td:nth-child(4) {
+        width: 12%;
+    }
+
+    #top-picks table th:nth-child(5),
+    #top-picks table td:nth-child(5) {
+        width: 24%;
+    }
 }
 
 @media (max-width: 380px) {

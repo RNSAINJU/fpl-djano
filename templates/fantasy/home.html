@@ -242,7 +242,7 @@
                         {% for fixture in fixtures %}
                         <li>
                             <div>
-                                <p>{{ fixture.home_team.badge }} {{ fixture.home_team.short_name }} vs {{ fixture.away_team.short_name }} {{ fixture.away_team.badge }}</p>
+                                <p>{{ fixture.home_team.short_name }} vs {{ fixture.away_team.short_name }}</p>
                                 <small>{{ fixture.kickoff_display }}</small>
                             </div>
                             <span class="difficulty difficulty-{{ fixture.difficulty }}">D{{ fixture.difficulty }}</span>
@@ -256,33 +256,6 @@
                         {% endfor %}
                     </ul>
                 </article>
-            </section>
-
-            <section class="card reveal" id="standings">
-                <header class="card-header">
-                    <h4>Mini League Standings</h4>
-                    <span>Weekly momentum</span>
-                </header>
-                <div class="leaders-grid">
-                    {% for entry in standings %}
-                    <div class="leader-row">
-                        <div>
-                            <strong>#{{ entry.rank }} {{ entry.manager_name }}</strong>
-                            <p>{{ entry.team_name }}</p>
-                        </div>
-                        <div class="score-cell">
-                            <strong>{{ entry.total_points }}</strong>
-                            <span>GW +{{ entry.gameweek_points }}</span>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="leader-row">
-                        <div>
-                            <strong>No league data available right now.</strong>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
             </section>
         </main>
     </div>

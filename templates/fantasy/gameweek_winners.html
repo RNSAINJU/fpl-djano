@@ -37,29 +37,24 @@
                     <p class="kicker">{{ gameweek_name }}</p>
                     <h3>Gameweek Winner</h3>
                 </div>
-                <span class="chip" data-gameweek-winner-chip>{% if selected_gameweek_finished and winner %}#1 {{ winner.manager_name }}{% elif selected_gameweek_finished %}No winner yet{% else %}Still in progress{% endif %}</span>
+                <span class="chip" data-gameweek-winner-chip>{% if winner %}#1 {{ winner.manager_name }}{% else %}No entries yet{% endif %}</span>
             </section>
 
-            <section class="winner-spotlight reveal{% if not selected_gameweek_finished %} winner-spotlight--sealed{% endif %}" data-gameweek-spotlight>
+            <section class="winner-spotlight reveal" data-gameweek-spotlight>
                 <div class="winner-spotlight__badge">🏆</div>
                 <div class="winner-spotlight__body">
-                    <p class="winner-spotlight__label" data-gameweek-spotlight-label>{% if selected_gameweek %}Gameweek {{ selected_gameweek }} Winner{% else %}Winner{% endif %}</p>
-                    {% if selected_gameweek_finished and winner %}
+                    <p class="winner-spotlight__label" data-gameweek-spotlight-label>{% if selected_gameweek %}Gameweek {{ selected_gameweek }} {% if selected_gameweek_finished %}Winner{% else %}Highest Scorer{% endif %}{% else %}Winner{% endif %}</p>
+                    {% if winner %}
                     <h3 class="winner-spotlight__name" data-gameweek-winner-name>{{ winner.manager_name }}</h3>
-                    <p class="winner-spotlight__team" data-gameweek-winner-team>{{ winner.team_name }}</p>
+                    <p class="winner-spotlight__team" data-gameweek-winner-team>{{ winner.team_name }}{% if not selected_gameweek_finished %} &middot; scores still live{% endif %}</p>
                     {% else %}
-                    <h3 class="winner-spotlight__name winner-spotlight__name--sealed" data-gameweek-winner-name>Winner revealed when this gameweek finishes</h3>
-                    <p class="winner-spotlight__team" data-gameweek-winner-team>Scores are still live - final points aren't in yet.</p>
+                    <h3 class="winner-spotlight__name" data-gameweek-winner-name>No entries yet</h3>
+                    <p class="winner-spotlight__team" data-gameweek-winner-team>-</p>
                     {% endif %}
                 </div>
                 <div class="winner-spotlight__score">
-                    {% if selected_gameweek_finished and winner %}
-                    <strong data-gameweek-winner-points>{{ winner.gameweek_points }}</strong>
+                    <strong data-gameweek-winner-points>{% if winner %}{{ winner.gameweek_points }}{% else %}0{% endif %}</strong>
                     <span>GW points</span>
-                    {% else %}
-                    <strong data-gameweek-winner-points>🔒</strong>
-                    <span>Sealed until finished</span>
-                    {% endif %}
                 </div>
             </section>
 

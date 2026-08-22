@@ -932,7 +932,7 @@ def _fetch_gameweek_leaderboard_live(
 
 		return {
 			'entries': entries[:15],
-			'winner': entries[0] if selected_gameweek_finished and entries else None,
+			'winner': entries[0] if entries else None,
 			'available_gameweeks': [{'value': gw, 'label': f'Gameweek {gw}'} for gw in available_gameweeks],
 			'selected_gameweek': selected_gameweek,
 			'selected_gameweek_finished': selected_gameweek_finished,
@@ -1234,7 +1234,6 @@ def home(request):
 	context = {
 		**base_context,
 		**dashboard_data,
-		'standings': rows[:5],
 		'top3_classic': classic_data['classic_rows'][:3],
 		'top3_gameweek': gameweek_data['entries'][:3],
 		'top3_gameweek_label': f"GW {gameweek_data['selected_gameweek']}" if gameweek_data.get('selected_gameweek') else '',
