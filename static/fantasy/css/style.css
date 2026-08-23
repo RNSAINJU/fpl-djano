@@ -957,6 +957,31 @@ body {
     }
 }
 
+.top-picks-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.top-picks-avatar {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--surface-soft);
+    border: 1px solid var(--outline);
+}
+
+.top-picks-avatar--fallback {
+    display: grid;
+    place-items: center;
+    color: var(--brand);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+}
+
 .table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;

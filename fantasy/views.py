@@ -434,6 +434,7 @@ def _fetch_dashboard_data_live() -> dict:
 					'price': _to_int(element.get('now_cost')) / 10,
 					'total_points': _to_int(element.get('total_points')),
 					'selected_by_percent': element.get('selected_by_percent', '0'),
+					'photo_url': _photo_url_from_code(element.get('code')),
 				}
 			)
 

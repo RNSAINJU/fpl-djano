@@ -504,15 +504,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const players = dashboard.top_players || [];
                 topPicksRows.innerHTML = players.length
                     ? players
-                        .map((player) => `
+                        .map((player) => {
+                            const avatar = player.photo_url
+                                ? `<img class="top-picks-avatar" src="${player.photo_url}" alt="${player.name}">`
+                                : `<span class="top-picks-avatar top-picks-avatar--fallback">${(player.name || '-').slice(0, 1)}</span>`;
+                            return `
                             <tr>
-                                <td>${player.name} <small>${player.team_short_name}</small></td>
+                                <td>
+                                    <div class="top-picks-player">
+                                        ${avatar}
+                                        <span>${player.name} <small>${player.team_short_name}</small></span>
+                                    </div>
+                                </td>
                                 <td>${player.position_label}</td>
                                 <td>${player.price}</td>
                                 <td>${player.total_points}</td>
                                 <td>${player.selected_by_percent}%</td>
                             </tr>
-                        `)
+                        `;
+                        })
                         .join('')
                     : '<tr><td colspan="5">No player data available right now.</td></tr>';
             }
