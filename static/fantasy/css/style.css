@@ -884,6 +884,36 @@ body {
     }
 }
 
+/* Prizes page: every page's advertisement shown one after another in a
+   single serial list, instead of each page's own single ad slot. */
+.prizes-ad-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.prizes-ad-item {
+    padding: 16px 0;
+    border-top: 1px solid var(--outline);
+}
+
+.prizes-ad-item:first-child {
+    padding-top: 4px;
+    border-top: none;
+}
+
+.prizes-ad-item:last-child {
+    padding-bottom: 4px;
+}
+
+.prizes-ad-item__label {
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06rem;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
 .table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
