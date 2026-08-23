@@ -1587,9 +1587,6 @@ def prizes(request):
 	base_context = _base_page_context('prizes')
 	context = {
 		**base_context,
-		# All of them serially rather than one page's own slot - lets the
-		# Prizes page double as a single place to see every sponsor.
-		'page_ads': PageAdvertisement.objects.exclude(image='').exclude(image__isnull=True),
 	}
 	return render(request, 'fantasy/prizes.html', context)
 
