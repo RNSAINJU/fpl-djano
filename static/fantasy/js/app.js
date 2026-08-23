@@ -424,9 +424,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.innerHTML = `<div class="stat-spotlight__text"><p class="stat-spotlight__value">-<span class="stat-spotlight__unit">${unitLabel}</span></p><p class="stat-name">No data</p><p class="stat-team"></p></div><div class="stat-spotlight__media"><div class="player-fallback">-</div></div>`;
                 return;
             }
+            // Not every player has a photo uploaded on the FPL CDN (it 403s
+            // for some codes) - fall back to the initial-letter badge if the
+            // image fails to load, instead of showing a broken-image icon.
+            const initial = (stat.name || '-').slice(0, 1);
             const media = stat.photo_url
-                ? `<img src="${stat.photo_url}" alt="${stat.name}">`
-                : `<div class="player-fallback">${(stat.name || '-').slice(0, 1)}</div>`;
+                ? `<img src="${stat.photo_url}" alt="${stat.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"><div class="player-fallback" style="display:none;">${initial}</div>`
+                : `<div class="player-fallback">${initial}</div>`;
             container.innerHTML = `<div class="stat-spotlight__text"><p class="stat-spotlight__value">${stat[valueKey] || 0}<span class="stat-spotlight__unit">${unitLabel}</span></p><p class="stat-name">${stat.name}</p><p class="stat-team">${stat.team_name || ''}</p></div><div class="stat-spotlight__media">${media}</div>`;
         };
 
@@ -505,9 +509,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 topPicksRows.innerHTML = players.length
                     ? players
                         .map((player) => {
+                            const initial = (player.name || '-').slice(0, 1);
                             const avatar = player.photo_url
-                                ? `<img class="top-picks-avatar" src="${player.photo_url}" alt="${player.name}">`
-                                : `<span class="top-picks-avatar top-picks-avatar--fallback">${(player.name || '-').slice(0, 1)}</span>`;
+                                ? `<img class="top-picks-avatar" src="${player.photo_url}" alt="${player.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"><span class="top-picks-avatar top-picks-avatar--fallback" style="display:none;">${initial}</span>`
+                                : `<span class="top-picks-avatar top-picks-avatar--fallback">${initial}</span>`;
                             return `
                             <tr>
                                 <td>
