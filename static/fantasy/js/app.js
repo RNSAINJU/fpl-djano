@@ -421,13 +421,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             if (!stat) {
-                container.innerHTML = '<div class="player-fallback">-</div><p class="stat-name">No data</p><p class="stat-value">-</p>';
+                container.innerHTML = `<div class="stat-spotlight__text"><p class="stat-spotlight__value">-<span class="stat-spotlight__unit">${unitLabel}</span></p><p class="stat-name">No data</p><p class="stat-team"></p></div><div class="stat-spotlight__media"><div class="player-fallback">-</div></div>`;
                 return;
             }
-            const image = stat.photo_url
+            const media = stat.photo_url
                 ? `<img src="${stat.photo_url}" alt="${stat.name}">`
                 : `<div class="player-fallback">${(stat.name || '-').slice(0, 1)}</div>`;
-            container.innerHTML = `${image}<p class="stat-name">${stat.name}</p><p class="stat-value">${stat[valueKey] || 0} ${unitLabel}</p>`;
+            container.innerHTML = `<div class="stat-spotlight__text"><p class="stat-spotlight__value">${stat[valueKey] || 0}<span class="stat-spotlight__unit">${unitLabel}</span></p><p class="stat-name">${stat.name}</p><p class="stat-team">${stat.team_name || ''}</p></div><div class="stat-spotlight__media">${media}</div>`;
         };
 
         const renderHome = (payload) => {

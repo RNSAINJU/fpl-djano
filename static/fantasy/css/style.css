@@ -563,78 +563,151 @@ body {
 }
 
 .top-stats-board {
-    border-radius: 22px;
-    padding: 14px;
-    background: linear-gradient(120deg, #37003c, #005a37 54%, #00b368);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.section-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.section-heading__kicker {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.1rem;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--brand);
 }
 
 .top-stats-board h4 {
-    margin: 0 0 10px;
-    text-align: center;
-    color: #fff;
+    margin: 0;
+    text-align: left;
+    color: var(--text-dark);
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 16px;
+    font-size: 19px;
 }
 
 .top-stats-grid {
     display: grid;
-    gap: 10px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .stat-spotlight {
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 10px;
-    text-align: center;
-    color: #f9efff;
+    border-radius: 18px;
+    border: 1px solid var(--outline);
+    background: var(--surface);
+    padding: 18px;
+    text-align: left;
+    color: var(--text-dark);
 }
 
 .stat-spotlight--scorer {
-    background: rgba(55, 0, 60, 0.6);
+    background: linear-gradient(135deg, #e2f0ff 0%, #fdfdff 70%);
 }
 
 .stat-spotlight--assist {
-    background: rgba(0, 90, 55, 0.6);
+    background: linear-gradient(135deg, #f7e7fb 0%, #fdfdff 70%);
 }
 
 .stat-spotlight--clean-sheet {
-    background: rgba(0, 60, 70, 0.6);
+    background: linear-gradient(135deg, #e0f9ec 0%, #fdfdff 70%);
 }
 
-.stat-spotlight h5 {
-    margin: 0 0 8px;
+.stat-spotlight__title {
+    margin: 0 0 12px;
     font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
 }
 
-.stat-spotlight img,
-.player-fallback {
-    width: 72px;
-    height: 72px;
-    margin: 0 auto;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.24);
+.stat-spotlight__body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.stat-spotlight__text {
+    min-width: 0;
+}
+
+.stat-spotlight__value {
+    margin: 0 0 8px;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--brand);
+}
+
+.stat-spotlight__unit {
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06rem;
+    color: var(--text-muted);
+}
+
+.stat-spotlight__media {
+    position: relative;
+    flex-shrink: 0;
+    width: 84px;
+    height: 84px;
     display: grid;
     place-items: center;
 }
 
+.stat-spotlight__media::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: rgba(55, 0, 60, 0.06);
+    z-index: 0;
+}
+
+.stat-spotlight img,
 .player-fallback {
-    background: rgba(255, 255, 255, 0.08);
+    position: relative;
+    z-index: 1;
+    width: 84px;
+    height: 84px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    object-fit: cover;
+}
+
+.player-fallback {
+    background: rgba(55, 0, 60, 0.08);
+    color: var(--brand);
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 24px;
+    font-size: 26px;
+    font-weight: 700;
 }
 
 .stat-name {
-    margin: 8px 0 2px;
-    color: #fff;
-    font-size: 14px;
+    margin: 0;
+    color: var(--text-dark);
+    font-size: 16px;
+    font-weight: 700;
     font-family: 'Space Grotesk', sans-serif;
 }
 
-.stat-value {
-    margin: 0;
-    color: #d7c2e9;
-    font-size: 12px;
+.stat-team {
+    margin: 2px 0 0;
+    color: var(--text-muted);
+    font-size: 13px;
 }
 
 .live-fixtures-board {
@@ -1344,7 +1417,7 @@ td small {
     .season-card,
     .tracker-card,
     .card,
-    .top-stats-board,
+    .stat-spotlight,
     .live-fixtures-board {
         padding: 16px;
         border-radius: 16px;
@@ -1373,14 +1446,23 @@ td small {
         font-size: 20px;
     }
 
+    .stat-spotlight__media {
+        width: 60px;
+        height: 60px;
+    }
+
     .stat-spotlight img,
     .player-fallback {
-        width: 56px;
-        height: 56px;
+        width: 60px;
+        height: 60px;
     }
 
     .player-fallback {
         font-size: 20px;
+    }
+
+    .stat-spotlight__value {
+        font-size: 30px;
     }
 
     .sidebar-nav a {

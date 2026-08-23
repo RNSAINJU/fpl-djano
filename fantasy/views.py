@@ -446,6 +446,7 @@ def _fetch_dashboard_data_live() -> dict:
 			leader = max(eligible, key=lambda row: (_to_int(row.get(sort_key)), _to_int(row.get('total_points'))))
 			return {
 				'name': leader.get('web_name', 'Unknown'),
+				'team_name': team_lookup.get(leader.get('team'), {}).get('name', '-'),
 				'goals': _to_int(leader.get('goals_scored')),
 				'assists': _to_int(leader.get('assists')),
 				'clean_sheets': _to_int(leader.get('clean_sheets')),
