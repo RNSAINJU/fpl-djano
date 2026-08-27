@@ -73,18 +73,6 @@
                     <p class="inline-error">{{ player_error }}</p>
                     {% endif %}
                 </article>
-
-                <article class="season-card reveal">
-                    <div class="ball-icon">O</div>
-                    <h4>{{ season_message }}</h4>
-                    <p>Countdown is synced to gameweek deadline and updates every second.</p>
-                    <div class="countdown" data-target="{{ deadline_iso }}">
-                        <div><strong data-count="days">00</strong><span>Days</span></div>
-                        <div><strong data-count="hours">00</strong><span>Hrs</span></div>
-                        <div><strong data-count="minutes">00</strong><span>Min</span></div>
-                        <div><strong data-count="seconds">00</strong><span>Sec</span></div>
-                    </div>
-                </article>
             </section>
 
             {% if live_data %}
