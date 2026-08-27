@@ -1281,6 +1281,11 @@ def _fetch_monthly_leaderboard_live(
 
 		return {
 			'monthly_rankings': leaderboard[:15],
+			# Full, untruncated list - kept separate from the display-only
+			# top 15 above so a single manager's own rank can still be
+			# looked up (e.g. for their live-tracker "current standing")
+			# even when it's outside the top 15 shown on the page itself.
+			'all_rankings': leaderboard,
 			'monthly_winner': leaderboard[0] if leaderboard else None,
 			'available_months': [{'value': m, 'label': _month_label(m)} for m in available_months],
 			'selected_month': selected_month,
@@ -1356,7 +1361,7 @@ def _fetch_manager_achievements_live(entry_id: int) -> dict:
 	Gameweek Winners and Manager of the Month each have their own natural
 	end point, so a title is shown as soon as that specific gameweek/month
 	is finished."""
-	empty = {'in_league': False, 'titles': []}
+	empty = {'in_league': False, 'titles': [], 'current_positions': None}
 	try:
 		if not CaptainGameweekScore.objects.filter(entry_id=entry_id).exists():
 			return empty
@@ -1419,7 +1424,37 @@ def _fetch_manager_achievements_live(entry_id: int) -> dict:
 					}
 				)
 
-		return {'in_league': True, 'titles': titles}
+		# Current standing (as opposed to the titles above, which only ever
+		# look at already-finished periods) - reuses each page's own cached
+		# leaderboard function, since this needs to reflect live in-progress
+		# gameweek data the same way those pages themselves do.
+		current_positions = {}
+
+		classic_rows, _league_name, _league_error, _source = _resolved_league_dataset()
+		classic_row = next((row for row in classic_rows if row.get('entry_id') == entry_id), None)
+		if classic_row:
+			current_positions['classic_rank'] = classic_row.get('rank')
+			current_positions['classic_points'] = classic_row.get('total_points')
+			current_positions['classic_total_entries'] = len(classic_rows)
+
+		captain_leaderboard, _status, _cap_error = _fetch_captain_leaderboard()
+		captain_row = next((row for row in captain_leaderboard if row.get('entry_id') == entry_id), None)
+		if captain_row:
+			current_positions['captain_rank'] = captain_row.get('rank')
+			current_positions['captain_points'] = captain_row.get('captain_points')
+			current_positions['captain_total_entries'] = len(captain_leaderboard)
+
+		monthly_data = _fetch_monthly_leaderboard()
+		monthly_row = next(
+			(row for row in monthly_data.get('all_rankings', []) if row.get('entry_id') == entry_id), None
+		)
+		if monthly_row:
+			current_positions['monthly_rank'] = monthly_row.get('rank')
+			current_positions['monthly_points'] = monthly_row.get('monthly_points')
+			current_positions['monthly_label'] = monthly_data.get('selected_month_label')
+			current_positions['monthly_total_entries'] = len(monthly_data.get('all_rankings', []))
+
+		return {'in_league': True, 'titles': titles, 'current_positions': current_positions}
 	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
 		return empty
 
