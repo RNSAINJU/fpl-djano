@@ -1613,7 +1613,12 @@ def live_gameweek(request):
 			if live_data:
 				request.session['fpl_entry_id'] = int(entry_id_raw)
 				context['saved_message'] = 'Team added successfully. It will load automatically next time.'
-				context['achievements'] = _fetch_manager_achievements(int(entry_id_raw))
+				# Achievements/current-standing are fetched by the page
+				# itself after load (see league_live_data's 'achievements'
+				# section) rather than computed here - checking 3
+				# leaderboards' worth of live data was blocking this whole
+				# page's render for 15-20s+, occasionally long enough to
+				# hit the gunicorn worker timeout outright.
 
 	if player_id_raw:
 		if not player_id_raw.isdigit():
@@ -1795,6 +1800,16 @@ def league_live_data(request):
 	if section in ('dashboard', 'all'):
 		dashboard_data = _fetch_dashboard_data()
 		response['dashboard'] = dashboard_data
+
+	# Deliberately not part of 'all' - this is a single manager's own
+	# lookup (Live Tracker), not something every page's slice needs, and
+	# computing 3 leaderboards' worth of live data was blocking that
+	# page's render for 15-20s+ (occasionally long enough to hit the
+	# gunicorn worker timeout outright) when fetched synchronously. Now
+	# fetched by the page itself after the rest of it has already loaded.
+	if section == 'achievements':
+		entry_id_param = request.GET.get('entry_id', '').strip()
+		response['achievements'] = _fetch_manager_achievements(int(entry_id_param)) if entry_id_param.isdigit() else None
 
 	return JsonResponse(response)
 

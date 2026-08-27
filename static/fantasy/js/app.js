@@ -646,4 +646,58 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshLeaguePage();
         setInterval(refreshLeaguePage, 45000);
     }
+
+    // Live Tracker's own "League Achievements" / "Current Standing" -
+    // fetched separately after the rest of the page has already rendered,
+    // since checking a manager's position across 3 leaderboards' worth of
+    // live data is too slow to compute inline with the page itself.
+    const achievementsBox = document.querySelector('[data-achievements-loading]');
+    if (achievementsBox) {
+        const entryId = achievementsBox.getAttribute('data-entry-id');
+        fetch(`/api/league-live-data/?section=achievements&entry_id=${encodeURIComponent(entryId)}`)
+            .then((res) => res.json())
+            .then((payload) => {
+                const achievements = payload.achievements;
+                if (!achievements || !achievements.in_league) {
+                    achievementsBox.remove();
+                    return;
+                }
+
+                const titles = achievements.titles || [];
+                achievementsBox.innerHTML = titles.length
+                    ? '<p class="chip-history__label">League Achievements</p><div class="chip-history__list">'
+                        + titles
+                            .map((title) => `<span class="chip-history__item chip-history__item--title">🏆 ${title.label} <small>${title.detail}</small></span>`)
+                            .join('')
+                        + '</div>'
+                    : '<p class="chip-history__label">League Achievements</p><p class="chip-history__empty">No titles won yet this season.</p>';
+
+                const positions = achievements.current_positions;
+                const positionItems = [];
+                if (positions && positions.classic_rank) {
+                    positionItems.push(
+                        `<span class="chip-history__item">Classic League #${positions.classic_rank} <small>of ${positions.classic_total_entries} &middot; ${positions.classic_points} pts</small></span>`
+                    );
+                }
+                if (positions && positions.captain_rank) {
+                    positionItems.push(
+                        `<span class="chip-history__item">Captain Mode #${positions.captain_rank} <small>of ${positions.captain_total_entries} &middot; ${positions.captain_points} pts</small></span>`
+                    );
+                }
+                if (positions && positions.monthly_rank) {
+                    positionItems.push(
+                        `<span class="chip-history__item">${positions.monthly_label} #${positions.monthly_rank} <small>of ${positions.monthly_total_entries} &middot; ${positions.monthly_points} pts</small></span>`
+                    );
+                }
+                if (positionItems.length) {
+                    const positionsBox = document.createElement('div');
+                    positionsBox.className = 'chip-history';
+                    positionsBox.innerHTML = `<p class="chip-history__label">Current Standing</p><div class="chip-history__list">${positionItems.join('')}</div>`;
+                    achievementsBox.after(positionsBox);
+                }
+            })
+            .catch(() => {
+                achievementsBox.remove();
+            });
+    }
 });

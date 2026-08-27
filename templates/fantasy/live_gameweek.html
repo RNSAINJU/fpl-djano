@@ -42,7 +42,12 @@
             </section>
 
             <section class="status-grid">
-                <article class="tracker-card reveal tracker-card--wide">
+                <article class="tracker-card reveal tracker-card--wide{% if live_data %} tracker-card--collapsible{% endif %}">
+                    {% if live_data %}
+                    <details class="tracker-collapse">
+                        <summary>Change FPL ID or search a player</summary>
+                        <div class="tracker-collapse__body">
+                    {% endif %}
                     <h4>See your live gameweek</h4>
                     <p>Enter your FPL ID to track points, rank and active players in real time.</p>
                     <form class="tracker-form" method="get" action="{% url 'fantasy:live_gameweek' %}">
@@ -71,6 +76,10 @@
                     {% endif %}
                     {% if player_error %}
                     <p class="inline-error">{{ player_error }}</p>
+                    {% endif %}
+                    {% if live_data %}
+                        </div>
+                    </details>
                     {% endif %}
                 </article>
             </section>
@@ -118,36 +127,10 @@
                         <p class="chip-history__empty">No chips used yet this season.</p>
                         {% endif %}
                     </div>
-                    {% if achievements.in_league %}
-                    <div class="chip-history">
+                    <div class="chip-history" data-achievements-loading data-entry-id="{{ live_data.entry_id }}">
                         <p class="chip-history__label">League Achievements</p>
-                        {% if achievements.titles %}
-                        <div class="chip-history__list">
-                            {% for title in achievements.titles %}
-                            <span class="chip-history__item chip-history__item--title">🏆 {{ title.label }} <small>{{ title.detail }}</small></span>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <p class="chip-history__empty">No titles won yet this season.</p>
-                        {% endif %}
+                        <p class="chip-history__empty">Loading&hellip;</p>
                     </div>
-                    {% if achievements.current_positions %}
-                    <div class="chip-history">
-                        <p class="chip-history__label">Current Standing</p>
-                        <div class="chip-history__list">
-                            {% if achievements.current_positions.classic_rank %}
-                            <span class="chip-history__item">Classic League #{{ achievements.current_positions.classic_rank }} <small>of {{ achievements.current_positions.classic_total_entries }} &middot; {{ achievements.current_positions.classic_points }} pts</small></span>
-                            {% endif %}
-                            {% if achievements.current_positions.captain_rank %}
-                            <span class="chip-history__item">Captain Mode #{{ achievements.current_positions.captain_rank }} <small>of {{ achievements.current_positions.captain_total_entries }} &middot; {{ achievements.current_positions.captain_points }} pts</small></span>
-                            {% endif %}
-                            {% if achievements.current_positions.monthly_rank %}
-                            <span class="chip-history__item">{{ achievements.current_positions.monthly_label }} #{{ achievements.current_positions.monthly_rank }} <small>of {{ achievements.current_positions.monthly_total_entries }} &middot; {{ achievements.current_positions.monthly_points }} pts</small></span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-                    {% endif %}
                 </article>
 
                 <article class="card reveal">

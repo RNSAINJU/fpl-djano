@@ -523,6 +523,47 @@ body {
     letter-spacing: 0.04rem;
 }
 
+/* Once a team is loaded, the ID/player-search form collapses down to a
+   single toggle line instead of taking up a full card, so the page opens
+   straight on the manager's own stats. */
+.tracker-card--collapsible {
+    padding: 14px 22px;
+}
+
+.tracker-collapse summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    list-style: none;
+    color: var(--brand);
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.tracker-collapse summary::-webkit-details-marker {
+    display: none;
+}
+
+.tracker-collapse summary::after {
+    content: "";
+    margin-left: auto;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--brand);
+    border-bottom: 2px solid var(--brand);
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+}
+
+.tracker-collapse[open] summary::after {
+    transform: rotate(-135deg);
+}
+
+.tracker-collapse__body {
+    padding-top: 16px;
+}
+
 .pick-link {
     color: #37003c;
     text-decoration: none;
