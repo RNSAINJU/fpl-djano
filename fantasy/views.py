@@ -435,6 +435,7 @@ def _fetch_dashboard_data_live() -> dict:
 					'total_points': _to_int(element.get('total_points')),
 					'selected_by_percent': element.get('selected_by_percent', '0'),
 					'photo_url': _photo_url_from_code(element.get('code')),
+					'shirt_url': _shirt_url_from_code(team.get('code')),
 				}
 			)
 
@@ -445,13 +446,19 @@ def _fetch_dashboard_data_live() -> dict:
 			if not eligible:
 				return None
 			leader = max(eligible, key=lambda row: (_to_int(row.get(sort_key)), _to_int(row.get('total_points'))))
+			leader_team = team_lookup.get(leader.get('team'), {})
 			return {
 				'name': leader.get('web_name', 'Unknown'),
-				'team_name': team_lookup.get(leader.get('team'), {}).get('name', '-'),
+				'team_name': leader_team.get('name', '-'),
 				'goals': _to_int(leader.get('goals_scored')),
 				'assists': _to_int(leader.get('assists')),
 				'clean_sheets': _to_int(leader.get('clean_sheets')),
 				'photo_url': _photo_url_from_code(leader.get('code')),
+				# Not every player has a headshot on the FPL CDN yet (it 403s
+				# for recent transfers/lesser-known players) - the frontend
+				# falls back to this team jersey icon, which is always
+				# available, before finally falling back to an initial letter.
+				'shirt_url': _shirt_url_from_code(leader_team.get('code')),
 			}
 
 		top_scorer = stat_leader('goals_scored')

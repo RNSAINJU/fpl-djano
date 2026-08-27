@@ -696,6 +696,17 @@ body {
     font-weight: 700;
 }
 
+/* Shown in place of a player headshot when the FPL CDN doesn't have one for
+   that player (recent transfers/lesser-known players 403) - the jersey png
+   has transparent padding around a shirt shape, so it needs `contain` + its
+   own inset instead of the headshot's `cover` crop. */
+.stat-spotlight img.is-shirt-fallback {
+    object-fit: contain;
+    background: rgba(55, 0, 60, 0.06);
+    padding: 14px;
+    box-sizing: border-box;
+}
+
 .stat-name {
     margin: 0;
     color: var(--text-dark);
@@ -971,6 +982,12 @@ body {
     object-fit: cover;
     background: var(--surface-soft);
     border: 1px solid var(--outline);
+}
+
+.top-picks-avatar.is-shirt-fallback {
+    object-fit: contain;
+    padding: 4px;
+    box-sizing: border-box;
 }
 
 .top-picks-avatar--fallback {
