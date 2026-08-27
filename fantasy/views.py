@@ -104,6 +104,15 @@ def _live_net_gameweek_points(picks_payload: dict, live_points_by_player: dict[i
 
 
 def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
+	# A short cache, not the usual FPL_CACHE_TIMEOUT - this is a per-manager
+	# lookup (entry info, picks, and a full live/{gw}/ points fetch), which
+	# on an uncached run was taking 4-5s and making every visit and refresh
+	# of this page repeat that in full. 60s keeps it feeling live while
+	# absorbing back-to-back page loads/refreshes.
+	return cache.get_or_set(f'fpl:live_data:{entry_id}', lambda: _fetch_fpl_live_data_live(entry_id), timeout=60)
+
+
+def _fetch_fpl_live_data_live(entry_id: int) -> tuple[dict | None, str | None]:
 	base_url = 'https://fantasy.premierleague.com/api'
 	try:
 		entry = _get_json(f'{base_url}/entry/{entry_id}/')
@@ -276,6 +285,10 @@ def _fetch_player_history(player_id: int) -> tuple[dict | None, str | None]:
 
 
 def _fetch_entry_history(entry_id: int) -> tuple[dict | None, str | None]:
+	return cache.get_or_set(f'fpl:entry_history:{entry_id}', lambda: _fetch_entry_history_live(entry_id), timeout=60)
+
+
+def _fetch_entry_history_live(entry_id: int) -> tuple[dict | None, str | None]:
 	base_url = 'https://fantasy.premierleague.com/api'
 	try:
 		payload = _get_json(f'{base_url}/entry/{entry_id}/history/')
@@ -1295,6 +1308,99 @@ def _build_classic_data(rows: list[dict]) -> dict:
 	}
 
 
+def _fetch_manager_achievements(entry_id: int) -> dict:
+	return cache.get_or_set(
+		f'fpl:manager_achievements:{entry_id}',
+		lambda: _fetch_manager_achievements_live(entry_id),
+		timeout=FPL_CACHE_TIMEOUT,
+	)
+
+
+def _fetch_manager_achievements_live(entry_id: int) -> dict:
+	"""Whether this FPL ID belongs to one of our own league's managers, and
+	if so, every title they've actually won so far this season. Computed
+	directly from CaptainGameweekScore (populated by sync_fpl_data for
+	every finished gameweek) rather than by calling each page's own
+	leaderboard function - those are built to serve a single live view and
+	fetch every manager's current picks over the network when a gameweek
+	is still FPL's "current" one, which is far too slow to redo in a loop
+	across every finished gameweek/month just to check one entry's
+	history. A DB-only aggregate per gameweek/month is instant and, since
+	CaptainGameweekScore is the same source those pages read finished
+	weeks from, can't disagree with what they show. Classic League and
+	Captain Mode are season-long, so their champion stays hidden until the
+	whole season is finished, same reveal rule as those two pages;
+	Gameweek Winners and Manager of the Month each have their own natural
+	end point, so a title is shown as soon as that specific gameweek/month
+	is finished."""
+	empty = {'in_league': False, 'titles': []}
+	try:
+		if not CaptainGameweekScore.objects.filter(entry_id=entry_id).exists():
+			return empty
+
+		titles = []
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		finished_gameweek_ids = sorted({event['id'] for event in events if event.get('finished')})
+
+		if _is_season_finished():
+			season_totals = list(
+				CaptainGameweekScore.objects.values('entry_id')
+				.annotate(season_total=Sum('gameweek_points'))
+				.order_by('-season_total')
+			)
+			if season_totals and season_totals[0]['entry_id'] == entry_id:
+				titles.append(
+					{'label': 'Classic League Champion', 'detail': f"{season_totals[0]['season_total']} pts"}
+				)
+
+			captain_totals = list(
+				CaptainGameweekScore.objects.values('entry_id')
+				.annotate(captain_total=Sum('captain_points'))
+				.order_by('-captain_total')
+			)
+			if captain_totals and captain_totals[0]['entry_id'] == entry_id:
+				titles.append(
+					{'label': 'Captain Mode Champion', 'detail': f"{captain_totals[0]['captain_total']} pts"}
+				)
+
+		for gw in finished_gameweek_ids:
+			top_row = (
+				CaptainGameweekScore.objects.filter(gameweek=gw)
+				.order_by('-gameweek_points')
+				.values('entry_id', 'gameweek_points')
+				.first()
+			)
+			if top_row and top_row['entry_id'] == entry_id:
+				titles.append({'label': f'Gameweek {gw} Winner', 'detail': f"{top_row['gameweek_points']} pts"})
+
+		gameweek_month_map = _gameweek_month_map(events)
+		gws_by_month: dict[str, list[int]] = {}
+		for gw, month in gameweek_month_map.items():
+			gws_by_month.setdefault(month, []).append(gw)
+
+		for month, gws_in_month in sorted(gws_by_month.items()):
+			if not gws_in_month or not all(gw in finished_gameweek_ids for gw in gws_in_month):
+				continue
+			month_totals = list(
+				CaptainGameweekScore.objects.filter(gameweek__in=gws_in_month)
+				.values('entry_id')
+				.annotate(net_total=Sum(F('gameweek_points') - F('event_transfers_cost')))
+				.order_by('-net_total')
+			)
+			if month_totals and month_totals[0]['entry_id'] == entry_id:
+				titles.append(
+					{
+						'label': f'Manager of the Month - {_month_label(month)}',
+						'detail': f"{month_totals[0]['net_total']} pts",
+					}
+				)
+
+		return {'in_league': True, 'titles': titles}
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return empty
+
+
 def _page_ad(page: str) -> PageAdvertisement | None:
 	"""Each page's ad slot, edited independently in the admin. Rows are
 	seeded per Page choice by migration 0009, but fall back to None (no ad
@@ -1432,6 +1538,7 @@ def live_gameweek(request):
 		'entry_history_error': None,
 		'player_error': None,
 		'saved_message': None,
+		'achievements': None,
 	}
 
 	if entry_id_raw:
@@ -1448,6 +1555,7 @@ def live_gameweek(request):
 			if live_data:
 				request.session['fpl_entry_id'] = int(entry_id_raw)
 				context['saved_message'] = 'Team added successfully. It will load automatically next time.'
+				context['achievements'] = _fetch_manager_achievements(int(entry_id_raw))
 
 	if player_id_raw:
 		if not player_id_raw.isdigit():

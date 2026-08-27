@@ -118,6 +118,20 @@
                         <p class="chip-history__empty">No chips used yet this season.</p>
                         {% endif %}
                     </div>
+                    {% if achievements.in_league %}
+                    <div class="chip-history">
+                        <p class="chip-history__label">League Achievements</p>
+                        {% if achievements.titles %}
+                        <div class="chip-history__list">
+                            {% for title in achievements.titles %}
+                            <span class="chip-history__item chip-history__item--title">🏆 {{ title.label }} <small>{{ title.detail }}</small></span>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="chip-history__empty">No titles won yet this season.</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </article>
 
                 <article class="card reveal">
@@ -169,7 +183,7 @@
             {% endif %}
 
             {% if entry_history %}
-            <section class="card reveal">
+            <section class="card reveal" id="fpl-id-history">
                 <header class="card-header">
                     <h4>FPL ID History</h4>
                     <span>Last 12 gameweeks</span>
@@ -182,8 +196,8 @@
                                 <th>GW Pts</th>
                                 <th>Total Pts</th>
                                 <th>GW Rank</th>
-                                <th>Overall Rank</th>
-                                <th>Transfers</th>
+                                <th>Ovr Rank</th>
+                                <th>Trans</th>
                                 <th>Cost</th>
                             </tr>
                         </thead>
@@ -284,68 +298,6 @@
                 </div>
             </section>
 
-            <section class="insight-grid">
-                <article class="card reveal">
-                    <header class="card-header">
-                        <h4>Recent GW History</h4>
-                        <span>Last 12 matches</span>
-                    </header>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>GW</th>
-                                    <th>Min</th>
-                                    <th>G</th>
-                                    <th>A</th>
-                                    <th>CS</th>
-                                    <th>Pts</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in player_history.history_rows %}
-                                <tr>
-                                    <td>{{ row.gameweek }}</td>
-                                    <td>{{ row.minutes }}</td>
-                                    <td>{{ row.goals_scored }}</td>
-                                    <td>{{ row.assists }}</td>
-                                    <td>{{ row.clean_sheets }}</td>
-                                    <td>{{ row.total_points }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="6">No recent history available yet.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
-
-                <article class="card reveal">
-                    <header class="card-header">
-                        <h4>Upcoming Fixtures</h4>
-                        <span>Next 5</span>
-                    </header>
-                    <ul class="fixtures-list">
-                        {% for fixture in player_history.upcoming_fixtures %}
-                        <li>
-                            <div>
-                                <p>GW {{ fixture.gameweek }} vs {{ fixture.opponent }}</p>
-                                <small>{% if fixture.is_home %}Home{% else %}Away{% endif %}</small>
-                            </div>
-                            <span class="difficulty difficulty-{{ fixture.difficulty|default:'3' }}">D{{ fixture.difficulty|default:'-' }}</span>
-                        </li>
-                        {% empty %}
-                        <li>
-                            <div>
-                                <p>No upcoming fixture data</p>
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </article>
-            </section>
 
             <section class="card reveal">
                 <header class="card-header">

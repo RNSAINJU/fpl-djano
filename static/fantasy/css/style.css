@@ -1545,6 +1545,11 @@ td small {
     font-weight: 600;
 }
 
+.chip-history__item--title {
+    background: rgba(0, 113, 63, 0.12);
+    color: #00512c;
+}
+
 .chip-history__empty {
     margin: 0;
     color: var(--text-muted);
@@ -1901,6 +1906,21 @@ td small {
     #top-picks table th:nth-child(5),
     #top-picks table td:nth-child(5) {
         width: 24%;
+    }
+
+    /* FPL ID History is all short numeric stat columns, no name/team
+       column - the generic 2nd/3rd-column boost above actually starves
+       the later columns instead of helping, which let "Transfers" and
+       "Cost" overflow into each other. Give all 7 an equal share and clip
+       with an ellipsis as a hard backstop instead of bleeding text. */
+    #fpl-id-history table th,
+    #fpl-id-history table td {
+        width: 14.28%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding-left: 4px;
+        padding-right: 4px;
     }
 }
 
