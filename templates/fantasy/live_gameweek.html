@@ -82,12 +82,41 @@
                         <h4>{{ live_data.team_name }}</h4>
                         <span>ID {{ live_data.entry_id }}</span>
                     </header>
-                    <div class="manager-meta">
-                        <p><strong>Manager:</strong> {{ live_data.manager_name }}</p>
-                        <p><strong>Current GW:</strong> {{ live_data.current_gameweek }}</p>
-                        <p><strong>GW Points:</strong> {{ live_data.event_points }}</p>
-                        <p><strong>Overall Points:</strong> {{ live_data.overall_points }}</p>
-                        <p><strong>Overall Rank:</strong> {{ live_data.overall_rank }}</p>
+                    <div class="manager-hero">
+                        <div class="manager-hero__text">
+                            <p class="manager-hero__label">Manager</p>
+                            <p class="manager-hero__name">{{ live_data.manager_name }}</p>
+                        </div>
+                        <div class="manager-hero__score">
+                            <strong>{{ live_data.event_points }}</strong>
+                            <span>GW{{ live_data.current_gameweek }} Points</span>
+                        </div>
+                    </div>
+                    <div class="manager-stats">
+                        <div class="manager-stats__item">
+                            <p class="manager-stats__value">{{ live_data.overall_points }}</p>
+                            <p class="manager-stats__label">Overall Points</p>
+                        </div>
+                        <div class="manager-stats__item">
+                            <p class="manager-stats__value">{{ live_data.overall_rank }}</p>
+                            <p class="manager-stats__label">Overall Rank</p>
+                        </div>
+                        <div class="manager-stats__item{% if live_data.active_chip %} manager-stats__item--active-chip{% endif %}">
+                            <p class="manager-stats__value">{{ live_data.active_chip|default:'None' }}</p>
+                            <p class="manager-stats__label">Active Chip</p>
+                        </div>
+                    </div>
+                    <div class="chip-history">
+                        <p class="chip-history__label">Chips Used</p>
+                        {% if entry_history.chips %}
+                        <div class="chip-history__list">
+                            {% for chip in entry_history.chips %}
+                            <span class="chip-history__item">{{ chip.label }} <small>GW{{ chip.event }}</small></span>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="chip-history__empty">No chips used yet this season.</p>
+                        {% endif %}
                     </div>
                 </article>
 

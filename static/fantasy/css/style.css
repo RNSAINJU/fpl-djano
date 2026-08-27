@@ -1409,6 +1409,166 @@ td small {
     }
 }
 
+/* Manager name + their gameweek points merged into one hero row, instead
+   of both being just separate lines in a plain fact list. */
+.manager-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    background: linear-gradient(120deg, #37003c, #00713f 160%);
+    color: #fff;
+}
+
+.manager-hero__text {
+    min-width: 0;
+}
+
+.manager-hero__label {
+    margin: 0 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.08rem;
+    font-size: 11px;
+    font-weight: 700;
+    color: #00ff87;
+}
+
+.manager-hero__name {
+    margin: 0;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.manager-hero__score {
+    flex-shrink: 0;
+    text-align: center;
+    padding-left: 18px;
+    border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.manager-hero__score strong {
+    display: block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    color: #00ff87;
+}
+
+.manager-hero__score span {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.72);
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+    white-space: nowrap;
+}
+
+.manager-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.manager-stats__item {
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--surface-soft);
+    border: 1px solid var(--outline);
+    text-align: center;
+}
+
+.manager-stats__item--active-chip {
+    background: rgba(0, 255, 135, 0.12);
+    border-color: rgba(0, 113, 63, 0.35);
+}
+
+.manager-stats__value {
+    margin: 0;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.manager-stats__label {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04rem;
+}
+
+.chip-history {
+    margin-top: 14px;
+}
+
+.chip-history__label {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+    color: var(--text-muted);
+}
+
+.chip-history__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip-history__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(55, 0, 60, 0.08);
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chip-history__item small {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.chip-history__empty {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 620px) {
+    .manager-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .manager-hero__score {
+        border-left: none;
+        padding-left: 0;
+        text-align: left;
+    }
+
+    .manager-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
 .manager-meta {
     display: grid;
     gap: 6px;

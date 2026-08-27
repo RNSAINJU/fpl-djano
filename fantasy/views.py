@@ -22,6 +22,21 @@ from .models import (
 
 FPL_CLASSIC_LEAGUE_ID = 6232
 
+# The FPL API's own internal chip codes, mapped to their display names.
+CHIP_LABELS = {
+	'wildcard': 'Wildcard',
+	'freehit': 'Free Hit',
+	'bboost': 'Bench Boost',
+	'3xc': 'Triple Captain',
+	'manager': 'Assistant Manager',
+}
+
+
+def _chip_label(chip_code: str | None) -> str | None:
+	if not chip_code:
+		return None
+	return CHIP_LABELS.get(chip_code, chip_code.replace('_', ' ').title())
+
 # Fixture kickoff times come from the FPL API in UTC. The dashboard displays
 # them in Nepal time (Kathmandu, UTC+5:45) rather than the site's UTC clock.
 NEPAL_TZ = ZoneInfo('Asia/Kathmandu')
@@ -166,6 +181,7 @@ def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
 			'picks': team_picks,
 			'pitch_rows': pitch_rows,
 			'bench': bench,
+			'active_chip': _chip_label(picks.get('active_chip')),
 		}
 		return data, None
 	except error.HTTPError as exc:
@@ -292,6 +308,7 @@ def _fetch_entry_history(entry_id: int) -> tuple[dict | None, str | None]:
 			chips.append(
 				{
 					'name': row.get('name', '-'),
+					'label': _chip_label(row.get('name')) or row.get('name', '-'),
 					'event': row.get('event', 0),
 				}
 			)
