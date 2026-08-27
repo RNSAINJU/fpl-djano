@@ -96,34 +96,45 @@
                         <h4>Current Squad</h4>
                         <span>Live picks</span>
                     </header>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Player</th>
-                                    <th>Role</th>
-                                    <th>xPts</th>
-                                    <th>Tag</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for pick in live_data.picks %}
-                                <tr>
-                                    <td>
-                                        <a class="pick-link" href="{% url 'fantasy:live_gameweek' %}?entry_id={{ live_data.entry_id }}&player_id={{ pick.player_id }}">{{ pick.name }}</a>
-                                    </td>
-                                    <td>{{ pick.position }}</td>
-                                    <td>x{{ pick.multiplier }}</td>
-                                    <td>{{ pick.captain_tag|default:'-' }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="4">No picks available for this gameweek yet.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    {% if live_data.pitch_rows %}
+                    <div class="pitch">
+                        {% for row in live_data.pitch_rows %}
+                        <div class="pitch-row">
+                            {% for player in row.players %}
+                            <a class="pitch-player" href="{% url 'fantasy:live_gameweek' %}?entry_id={{ live_data.entry_id }}&player_id={{ player.player_id }}">
+                                <span class="pitch-player__shirt">
+                                    <img src="{{ player.shirt_url }}" alt="{{ player.name }}">
+                                    {% if player.captain_tag %}<span class="pitch-player__badge">{{ player.captain_tag }}</span>{% endif %}
+                                </span>
+                                <span class="pitch-player__name">{{ player.name }}</span>
+                                <span class="pitch-player__points">{{ player.live_points }}</span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
                     </div>
+
+                    {% if live_data.bench %}
+                    <div class="pitch-bench">
+                        <p class="pitch-bench__label">Bench</p>
+                        <div class="pitch-bench__row">
+                            {% for player in live_data.bench %}
+                            <a class="pitch-player" href="{% url 'fantasy:live_gameweek' %}?entry_id={{ live_data.entry_id }}&player_id={{ player.player_id }}">
+                                <span class="pitch-player__position">{{ player.position }}</span>
+                                <span class="pitch-player__shirt">
+                                    <img src="{{ player.shirt_url }}" alt="{{ player.name }}">
+                                    {% if player.captain_tag %}<span class="pitch-player__badge">{{ player.captain_tag }}</span>{% endif %}
+                                </span>
+                                <span class="pitch-player__name">{{ player.name }}</span>
+                                <span class="pitch-player__points">{{ player.live_points }}</span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p>No picks available for this gameweek yet.</p>
+                    {% endif %}
                 </article>
             </section>
             {% endif %}

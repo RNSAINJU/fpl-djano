@@ -110,12 +110,14 @@ def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
 		except (error.URLError, TimeoutError, ValueError, KeyError, TypeError):
 			picks = {'picks': []}
 		element_lookup = {element['id']: element for element in bootstrap.get('elements', [])}
+		team_lookup = {team['id']: team for team in bootstrap.get('teams', [])}
 		position_lookup = {
 			1: 'GK',
 			2: 'DEF',
 			3: 'MID',
 			4: 'FWD',
 		}
+		live_points_by_player = _fetch_live_element_points(current_gameweek)
 
 		team_picks = []
 		for pick in picks.get('picks', []):
@@ -123,15 +125,35 @@ def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
 			if not element:
 				continue
 			captain_tag = 'C' if pick.get('is_captain') else 'VC' if pick.get('is_vice_captain') else ''
+			multiplier = pick.get('multiplier', 1)
+			team = team_lookup.get(element.get('team'), {})
 			team_picks.append(
 				{
 					'name': element.get('web_name', 'Unknown'),
 					'player_id': element.get('id'),
 					'position': position_lookup.get(element.get('element_type'), '-'),
-					'multiplier': pick.get('multiplier', 1),
+					'element_type': element.get('element_type'),
+					'multiplier': multiplier,
 					'captain_tag': captain_tag,
+					'is_bench': (pick.get('position') or 0) > 11,
+					'shirt_url': _shirt_url_from_code(team.get('code')),
+					# Bench picks carry multiplier 0, so their raw live score
+					# (not yet multiplied) is what the pitch shows for them -
+					# matching the FPL app's own "not counting yet" display.
+					'live_points': live_points_by_player.get(element.get('id'), 0) * (multiplier or 1),
 				}
 			)
+
+		# Group the starting XI into pitch rows (GK -> DEF -> MID -> FWD, the
+		# FPL app's own formation order) for a pitch-style layout; the last 4
+		# squad slots are the bench, kept underneath in their own order.
+		starting_xi = [pick for pick in team_picks if not pick['is_bench']]
+		bench = [pick for pick in team_picks if pick['is_bench']]
+		pitch_rows = []
+		for label, element_type in (('GK', 1), ('DEF', 2), ('MID', 3), ('FWD', 4)):
+			row_players = [pick for pick in starting_xi if pick['element_type'] == element_type]
+			if row_players:
+				pitch_rows.append({'label': label, 'players': row_players})
 
 		data = {
 			'entry_id': entry_id,
@@ -142,6 +164,8 @@ def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
 			'event_points': entry.get('summary_event_points', 0),
 			'current_gameweek': current_gameweek,
 			'picks': team_picks,
+			'pitch_rows': pitch_rows,
+			'bench': bench,
 		}
 		return data, None
 	except error.HTTPError as exc:
