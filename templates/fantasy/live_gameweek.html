@@ -253,35 +253,6 @@
                         </table>
                     </div>
                 </article>
-
-                <article class="card reveal">
-                    <header class="card-header">
-                        <h4>Chips Used</h4>
-                        <span>By gameweek</span>
-                    </header>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Chip</th>
-                                    <th>GW</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for chip in entry_history.chips %}
-                                <tr>
-                                    <td>{{ chip.name }}</td>
-                                    <td>{{ chip.event }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="2">No chip usage recorded yet.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
             </section>
             {% endif %}
 
