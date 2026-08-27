@@ -87,7 +87,11 @@ class Player(models.Model):
 	team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='players')
 	position = models.CharField(max_length=3, choices=Position.choices)
 	price = models.DecimalField(max_digits=4, decimal_places=1)
-	total_points = models.PositiveIntegerField(default=0)
+	# A player's season total can legitimately go negative early on (e.g. a
+	# red card or own goal before playing enough minutes to offset it) -
+	# PositiveIntegerField rejected that and broke the whole sync command
+	# the first time it happened.
+	total_points = models.IntegerField(default=0)
 	selected_by_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 	goals = models.PositiveSmallIntegerField(default=0)
 	assists = models.PositiveSmallIntegerField(default=0)
