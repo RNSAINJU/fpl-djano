@@ -758,7 +758,14 @@ def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tu
 		if not using_new_entries:
 			bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
 			current_event = next((event for event in bootstrap.get('events', []) if event.get('is_current')), None)
-			current_gameweek = current_event.get('id') if current_event else None
+			# FPL doesn't hand "current" over to the next gameweek the moment
+			# a gameweek finishes (it stays 'is_current' for a while after)
+			# - trusting that flag alone made this double-count a finished
+			# gameweek's points: once for its CaptainGameweekScore row, then
+			# again from this live fetch. Only treat a gameweek as still
+			# "current" for the live top-up below if it's genuinely not
+			# finished yet.
+			current_gameweek = current_event.get('id') if current_event and not current_event.get('finished') else None
 
 			stored_totals = (
 				CaptainGameweekScore.objects.filter(entry_id__in=managers.keys())
@@ -837,7 +844,13 @@ def _fetch_captain_leaderboard_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> t
 		events = bootstrap.get('events', [])
 		current_event = next((event for event in events if event.get('is_current')), None)
 		next_event = next((event for event in events if event.get('is_next')), None)
-		current_gameweek = current_event.get('id') if current_event else None
+		# FPL doesn't hand "current" over to the next gameweek the moment a
+		# gameweek finishes (it stays 'is_current' for a while after) - only
+		# treat it as still in progress here if it's genuinely not finished
+		# yet, otherwise this both mislabels a finished gameweek as "Live"
+		# and double-counts its points (once from CaptainGameweekScore, once
+		# from this live top-up).
+		current_gameweek = current_event.get('id') if current_event and not current_event.get('finished') else None
 		next_gameweek = next_event.get('id') if next_event else None
 		latest_finished_gameweek = (
 			CaptainGameweekScore.objects.order_by('-gameweek').values_list('gameweek', flat=True).first()
@@ -997,7 +1010,12 @@ def _fetch_gameweek_leaderboard_live(
 		events = bootstrap.get('events', [])
 		current_event = next((event for event in events if event.get('is_current')), None)
 		next_event = next((event for event in events if event.get('is_next')), None)
-		current_gameweek = current_event.get('id') if current_event else None
+		# FPL doesn't hand "current" over to the next gameweek the moment a
+		# gameweek finishes (it stays 'is_current' for a while after) - only
+		# treat it as still in progress here if it's genuinely not finished
+		# yet, otherwise the branch below re-fetches (and double-counts) a
+		# gameweek that's already stored in CaptainGameweekScore.
+		current_gameweek = current_event.get('id') if current_event and not current_event.get('finished') else None
 
 		# Kept separate from available_gameweeks below (which also includes
 		# the current/next gameweek purely so there's something selectable) -
@@ -1152,7 +1170,12 @@ def _fetch_monthly_leaderboard_live(
 		events = bootstrap.get('events', [])
 		current_event = next((event for event in events if event.get('is_current')), None)
 		next_event = next((event for event in events if event.get('is_next')), None)
-		current_gameweek = current_event.get('id') if current_event else None
+		# FPL doesn't hand "current" over to the next gameweek the moment a
+		# gameweek finishes (it stays 'is_current' for a while after) - only
+		# treat it as still in progress here if it's genuinely not finished
+		# yet, otherwise the live top-up below re-adds a gameweek that's
+		# already counted in CaptainGameweekScore's stored total.
+		current_gameweek = current_event.get('id') if current_event and not current_event.get('finished') else None
 
 		gameweek_month_map = _gameweek_month_map(events)
 

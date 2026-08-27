@@ -125,7 +125,11 @@ class LeagueEntry(models.Model):
 	team_name = models.CharField(max_length=100)
 	total_points = models.PositiveIntegerField(default=0)
 	gameweek_points = models.PositiveIntegerField(default=0)
-	rank = models.PositiveIntegerField(unique=True)
+	# Ties are a legitimate real-world case (FPL can report the same rank
+	# for two managers tied on points) - not a data error, so this must
+	# not be unique or bulk_create raises IntegrityError and aborts the
+	# whole sync_fpl_data run.
+	rank = models.PositiveIntegerField()
 
 	class Meta:
 		ordering = ['rank']
