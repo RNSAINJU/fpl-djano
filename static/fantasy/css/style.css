@@ -2385,12 +2385,39 @@ td small {
     }
 
     .fixture-team__shirt {
-        width: 38px;
-        height: 38px;
+        width: 30px;
+        height: 30px;
+    }
+
+    .fixture-teams strong {
+        font-size: 13px;
     }
 
     .fixture-teams span {
-        margin-top: 12px;
+        margin-top: 10px;
+        font-size: 11px;
+    }
+
+    .live-fixture-card {
+        padding: 8px 10px;
+        border-radius: 12px;
+    }
+
+    .live-fixtures-grid {
+        gap: 8px;
+    }
+
+    .fixture-status {
+        padding: 2px 6px;
+        font-size: 10px;
+    }
+
+    .live-fixture-card p {
+        font-size: 12px;
+    }
+
+    .fixture-score {
+        font-size: 15px !important;
     }
 
     .team-hero,
@@ -2426,23 +2453,53 @@ td small {
         font-size: 20px;
     }
 
+    .stat-spotlight {
+        padding: 14px;
+    }
+
+    .stat-spotlight__title {
+        font-size: 11px;
+        margin-bottom: 8px;
+    }
+
+    .stat-spotlight img.is-shirt-fallback {
+        padding: 8px;
+    }
+
     .stat-spotlight__media {
-        width: 60px;
-        height: 60px;
+        width: 48px;
+        height: 48px;
     }
 
     .stat-spotlight img,
     .player-fallback {
-        width: 60px;
-        height: 60px;
+        width: 48px;
+        height: 48px;
     }
 
     .player-fallback {
-        font-size: 20px;
+        font-size: 17px;
     }
 
     .stat-spotlight__value {
-        font-size: 30px;
+        font-size: 24px;
+        margin-bottom: 4px;
+    }
+
+    .stat-spotlight__unit {
+        font-size: 10px;
+    }
+
+    .stat-name {
+        font-size: 14px;
+    }
+
+    .stat-team {
+        font-size: 11px;
+    }
+
+    .top-stats-grid {
+        gap: 8px;
     }
 
     .sidebar-nav a {
