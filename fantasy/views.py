@@ -878,14 +878,39 @@ def _fetch_league_pages(league_id: int, page_param: str, result_key: str, max_pa
 	return rows, first_payload
 
 
-def _fetch_league_entry_rows(league_id: int) -> tuple[list[dict], bool]:
-	"""Returns (rows, using_new_entries). Falls back to newly-joined entries
-	when the league hasn't produced scored standings yet (e.g. pre-season)."""
-	standings, _ = _fetch_league_pages(league_id, 'page_standings', 'standings')
+def _fetch_league_roster(league_id: int) -> tuple[list[dict], bool, str]:
+	"""Returns (rows, using_new_entries, league_name) - the league's member
+	roster (standings if it has scored entries yet, else newly-joined
+	entries) plus its display name, from one cached fetch. Classic League,
+	Gameweek Winners, Manager of the Month, and Captain Mode each need
+	this exact same roster; without a shared cache here, a single cold
+	section=all request (e.g. the dashboard's first load after a cache
+	clear) re-walked FPL's paginated standings endpoint 4 separate times
+	in a row for identical data - measured at ~14s just for that
+	redundant part, before any per-page work even started."""
+	return cache.get_or_set(
+		f'fpl:league_roster:{league_id}',
+		lambda: _fetch_league_roster_live(league_id),
+		timeout=FPL_CACHE_TIMEOUT,
+	)
+
+
+def _fetch_league_roster_live(league_id: int) -> tuple[list[dict], bool, str]:
+	fallback_name = f'FPL League {league_id}'
+	standings, first_payload = _fetch_league_pages(league_id, 'page_standings', 'standings')
+	league_name = first_payload.get('league', {}).get('name', fallback_name)
 	if standings:
-		return standings, False
-	new_entries, _ = _fetch_league_pages(league_id, 'page_new_entries', 'new_entries')
-	return new_entries, True
+		return standings, False, league_name
+	new_entries, new_entries_payload = _fetch_league_pages(league_id, 'page_new_entries', 'new_entries')
+	if league_name == fallback_name:
+		league_name = new_entries_payload.get('league', {}).get('name', fallback_name)
+	return new_entries, True, league_name
+
+
+def _fetch_league_entry_rows(league_id: int) -> tuple[list[dict], bool]:
+	"""Returns (rows, using_new_entries) - see _fetch_league_roster."""
+	rows, using_new_entries, _league_name = _fetch_league_roster(league_id)
+	return rows, using_new_entries
 
 
 def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
@@ -901,14 +926,7 @@ def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tu
 	fresh totals too, since FPL's own 'rank' field lags for the same
 	reason and would otherwise no longer match the points shown."""
 	try:
-		standings_raw, first_payload = _fetch_league_pages(league_id, 'page_standings', 'standings')
-		league_name = first_payload.get('league', {}).get('name', f'FPL League {league_id}')
-
-		using_new_entries = False
-		entry_rows = standings_raw
-		if not entry_rows:
-			entry_rows, _ = _fetch_league_pages(league_id, 'page_new_entries', 'new_entries')
-			using_new_entries = True
+		entry_rows, using_new_entries, league_name = _fetch_league_roster(league_id)
 
 		if not entry_rows:
 			return [], league_name, 'League fetched, but no members were returned yet.'
