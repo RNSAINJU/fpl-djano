@@ -82,7 +82,10 @@ heredocs. The only reliable workflow is:
 | Football-pitch player layout | `.pitch`, `.pitch-row`, `.pitch-player`, `.pitch-bench` | Live Tracker (Current Squad) |
 | Stat card w/ big number + photo | `.stat-spotlight`, `.stat-spotlight__media` | Home dashboard (Top Stats) |
 | Team jersey icon | `.fixture-team__shirt` / `.pitch-player__shirt img` — built from `_shirt_url_from_code(team_code)` | Live Fixtures, pitch view |
-| Player headshot w/ jersey fallback | `onerror="window.handlePlayerPhotoError(this, shirtUrl)"` (defined once, top of `app.js`) | Everywhere a player photo is shown |
+| Player headshot w/ jersey fallback | `window.buildPlayerAvatar(name, photoUrl, shirtUrl, className)` (defined once, top of `app.js` - builds the `<img>` + hidden fallback `<span>` pair, wired to `onerror="window.handlePlayerPhotoError(...)"` automatically) | Every dashboard card that shows a player - Top Stats, Top Picks tables/grids, Team of the Week, Injuries & Suspensions |
+| Player card grid (photo + name + a stat) | `.owned-grid`/`.owned-card` (Most Selected), `.picks-grid`/`.pick-card` (Top Picks for next GW) | Home dashboard |
+| Horizontal-scroll player row on dark board | `.totw-row`/`.totw-player`, same dark-board wrapper as `.live-fixtures-board` | Home dashboard (Team of the Week) |
+| Availability/news list | `.injuries-list`/`.injury-item` + `.status-pill--i/s/d/u/n` (keyed by FPL's own player `status` code) | Home dashboard (Injuries & Suspensions) |
 | Ad banner (logo + league name + per-page ad) | `_league_banner.html` include | Captain Mode, Classic League, Gameweek Winners, Manager of the Month |
 
 Brand palette (both public site and admin): deep purple `#37003c`
@@ -121,8 +124,10 @@ Brand palette (both public site and admin): deep purple `#37003c`
   "Access Denied", not a code bug. If photos start going missing again,
   suspect the URL pattern (FPL may rotate the season segment, e.g.
   `premierleague26` next season) before assuming the player has no photo.
-  Every `<img>` for a player photo should still pair with
-  `onerror="window.handlePlayerPhotoError(this, shirtUrl)"` as a backstop
+  Every player photo should still be built via
+  `window.buildPlayerAvatar(name, photoUrl, shirtUrl, className)` rather
+  than a hand-written `<img>` — it wires up the same
+  `onerror="window.handlePlayerPhotoError(...)"` backstop
   (falls back to the team jersey, then an initial-letter badge) — cheap
   insurance for whichever player/season the current URL pattern doesn't
   cover.
