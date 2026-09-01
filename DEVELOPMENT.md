@@ -112,12 +112,20 @@ Brand palette (both public site and admin): deep purple `#37003c`
   pattern. Always also add `white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis;` as a backstop so a too-long header clips
   instead of bleeding into the next cell.
-- **Player/team photos 403 for some codes.** Not every player has a
-  headshot on `resources.premierleague.com` (confirmed via direct curl —
-  real "Access Denied", not a bug in our URL). Never render a bare `<img>`
-  for a player photo — always pair it with `onerror="window.handlePlayerPhotoError(this, shirtUrl)"`
-  which falls back to the team jersey (100% reliable, different host),
-  then finally an initial-letter badge.
+- **Player photo URL**: `_photo_url_from_code()` builds
+  `https://resources.premierleague.com/premierleague25/photos/players/110x140/{code}.png`
+  (season-scoped bucket, **no** `p` prefix on the code, 110x140 size). An
+  earlier version used `.../premierleague/photos/players/250x250/p{code}.png`
+  (no season segment, `p`-prefixed, 250x250) which **403s for a lot of
+  real current players** (Cherki, Mendy confirmed) — a genuine CDN
+  "Access Denied", not a code bug. If photos start going missing again,
+  suspect the URL pattern (FPL may rotate the season segment, e.g.
+  `premierleague26` next season) before assuming the player has no photo.
+  Every `<img>` for a player photo should still pair with
+  `onerror="window.handlePlayerPhotoError(this, shirtUrl)"` as a backstop
+  (falls back to the team jersey, then an initial-letter badge) — cheap
+  insurance for whichever player/season the current URL pattern doesn't
+  cover.
 - **Breakpoints in use**: `1260px` (font/heading scale-down),
   `1020px` (sidebar becomes a drawer), `620px` (full mobile compaction),
   `380px` (extra-narrow tweaks). Put new mobile rules in the existing
