@@ -872,6 +872,47 @@ body {
     margin-bottom: 10px;
 }
 
+/* Live Fixtures' prev/next gameweek pager. */
+.gw-pager {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gw-pager__btn {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.gw-pager__btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.gw-pager__btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.gw-pager__label {
+    min-width: 52px;
+    text-align: center;
+    padding: 4px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 14px;
+    font-weight: 600;
+}
+
 .live-fixtures-head h4 {
     margin: 0;
     font-size: 20px;

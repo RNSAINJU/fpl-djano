@@ -74,6 +74,75 @@ def _shirt_url_from_code(code: int | str | None) -> str:
 	return f'https://fantasy.premierleague.com/dist/img/shirts/standard/shirt_{code}-66.png'
 
 
+def _build_fixture_card(fixture: dict, team_lookup: dict) -> dict:
+	"""One Live Fixtures card - shared by the dashboard's default (current
+	gameweek) load and the gameweek pager's browse-to-any-gameweek fetch,
+	so both build the exact same shape."""
+	home_team = team_lookup.get(fixture.get('team_h'), {})
+	away_team = team_lookup.get(fixture.get('team_a'), {})
+	kickoff_iso = fixture.get('kickoff_time')
+	kickoff_display = '-'
+	if kickoff_iso:
+		kickoff_dt = datetime.fromisoformat(kickoff_iso.replace('Z', '+00:00'))
+		kickoff_display = kickoff_dt.astimezone(NEPAL_TZ).strftime('%d %b, %H:%M') + ' NPT'
+
+	if fixture.get('finished'):
+		status = 'FT'
+	elif fixture.get('started'):
+		status = 'LIVE'
+	else:
+		status = 'Upcoming'
+
+	return {
+		'home_team': {
+			'short_name': home_team.get('short_name', '-'),
+			'badge': home_team.get('short_name', 'H')[:1],
+			'shirt_url': _shirt_url_from_code(home_team.get('code')),
+		},
+		'away_team': {
+			'short_name': away_team.get('short_name', '-'),
+			'badge': away_team.get('short_name', 'A')[:1],
+			'shirt_url': _shirt_url_from_code(away_team.get('code')),
+		},
+		'kickoff_display': kickoff_display,
+		'status': status,
+		'home_score': fixture.get('team_h_score'),
+		'away_score': fixture.get('team_a_score'),
+	}
+
+
+def _fetch_gameweek_fixtures_page(gameweek: int) -> dict:
+	return cache.get_or_set(
+		f'fpl:gameweek_fixtures_page:{gameweek}',
+		lambda: _fetch_gameweek_fixtures_page_live(gameweek),
+		timeout=300,
+	)
+
+
+def _fetch_gameweek_fixtures_page_live(gameweek: int) -> dict:
+	"""Live Fixtures, browsable to any gameweek via the dashboard's
+	prev/next pager - not just the current one the page loads with."""
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		team_lookup = {team['id']: team for team in bootstrap.get('teams', [])}
+		events = bootstrap.get('events', [])
+		gw_fixture_rows = _get_json(f'https://fantasy.premierleague.com/api/fixtures/?event={gameweek}')
+	except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+		return {'fixtures': [], 'gameweek': gameweek, 'min_gameweek': 1, 'max_gameweek': 38}
+
+	event_ids = sorted(event['id'] for event in events) if events else []
+	fixtures = [
+		_build_fixture_card(fixture, team_lookup)
+		for fixture in sorted(gw_fixture_rows, key=lambda row: row.get('kickoff_time') or '')
+	]
+	return {
+		'fixtures': fixtures,
+		'gameweek': gameweek,
+		'min_gameweek': event_ids[0] if event_ids else 1,
+		'max_gameweek': event_ids[-1] if event_ids else 38,
+	}
+
+
 def _fetch_live_element_points(gameweek: int) -> dict[int, int]:
 	"""Maps element (player) id -> that player's live total_points for the
 	given gameweek, from /event/{gw}/live/ - the source FPL actually keeps
@@ -600,40 +669,12 @@ def _fetch_dashboard_data_live() -> dict:
 				)
 			except (error.HTTPError, error.URLError, ValueError, TimeoutError):
 				gw_fixture_rows = []
-			for fixture in sorted(gw_fixture_rows, key=lambda row: row.get('kickoff_time') or ''):
-				home_team = team_lookup.get(fixture.get('team_h'), {})
-				away_team = team_lookup.get(fixture.get('team_a'), {})
-				kickoff_iso = fixture.get('kickoff_time')
-				kickoff_display = '-'
-				if kickoff_iso:
-					kickoff_dt = datetime.fromisoformat(kickoff_iso.replace('Z', '+00:00'))
-					kickoff_display = kickoff_dt.astimezone(NEPAL_TZ).strftime('%d %b, %H:%M') + ' NPT'
+			live_fixtures = [
+				_build_fixture_card(fixture, team_lookup)
+				for fixture in sorted(gw_fixture_rows, key=lambda row: row.get('kickoff_time') or '')
+			]
 
-				if fixture.get('finished'):
-					status = 'FT'
-				elif fixture.get('started'):
-					status = 'LIVE'
-				else:
-					status = 'Upcoming'
-
-				live_fixtures.append(
-					{
-						'home_team': {
-							'short_name': home_team.get('short_name', '-'),
-							'badge': home_team.get('short_name', 'H')[:1],
-							'shirt_url': _shirt_url_from_code(home_team.get('code')),
-						},
-						'away_team': {
-							'short_name': away_team.get('short_name', '-'),
-							'badge': away_team.get('short_name', 'A')[:1],
-							'shirt_url': _shirt_url_from_code(away_team.get('code')),
-						},
-						'kickoff_display': kickoff_display,
-						'status': status,
-						'home_score': fixture.get('team_h_score'),
-						'away_score': fixture.get('team_a_score'),
-					}
-				)
+		event_ids = sorted(event['id'] for event in events) if events else []
 
 		# Top Picks for the upcoming gameweek: FPL's own "expected points
 		# next gameweek" (ep_next), among players actually available to
@@ -728,6 +769,9 @@ def _fetch_dashboard_data_live() -> dict:
 			'fixtures': upcoming_fixtures[:4],
 			'live_fixtures': live_fixtures,
 			'live_fixtures_label': f"GW {target_gameweek}" if target_gameweek else 'Upcoming',
+			'live_fixtures_gameweek': target_gameweek,
+			'live_fixtures_min_gw': event_ids[0] if event_ids else 1,
+			'live_fixtures_max_gw': event_ids[-1] if event_ids else 38,
 			'teams_count': len(teams),
 			'players_count': len(elements),
 			'top_picks_next_gw': top_picks_next_gw,
@@ -745,6 +789,9 @@ def _fetch_dashboard_data_live() -> dict:
 			'fixtures': [],
 			'live_fixtures': [],
 			'live_fixtures_label': 'Upcoming',
+			'live_fixtures_gameweek': None,
+			'live_fixtures_min_gw': 1,
+			'live_fixtures_max_gw': 38,
 			'teams_count': 0,
 			'players_count': 0,
 			'top_picks_next_gw': [],
@@ -1938,6 +1985,15 @@ def league_live_data(request):
 	if section == 'achievements':
 		entry_id_param = request.GET.get('entry_id', '').strip()
 		response['achievements'] = _fetch_manager_achievements(int(entry_id_param)) if entry_id_param.isdigit() else None
+
+	# The dashboard's Live Fixtures pager - browse any gameweek's fixtures,
+	# not just the current one the page loads with.
+	if section == 'live_fixtures':
+		try:
+			gameweek_param = int(request.GET.get('gameweek', '').strip())
+		except (TypeError, ValueError):
+			gameweek_param = 1
+		response['live_fixtures_page'] = _fetch_gameweek_fixtures_page(gameweek_param)
 
 	return JsonResponse(response)
 

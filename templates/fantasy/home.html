@@ -152,10 +152,14 @@
                 </div>
             </section>
 
-            <section class="live-fixtures-board reveal" id="live-fixtures">
+            <section class="live-fixtures-board reveal" id="live-fixtures" data-gw-pager>
                 <div class="live-fixtures-head">
                     <h4>Live Fixtures</h4>
-                    <span data-home-live-fixtures-label>{{ live_fixtures_label }}</span>
+                    <div class="gw-pager">
+                        <button type="button" class="gw-pager__btn" data-gw-prev aria-label="Previous gameweek">&lsaquo;</button>
+                        <span class="gw-pager__label" data-home-live-fixtures-label>{{ live_fixtures_label }}</span>
+                        <button type="button" class="gw-pager__btn" data-gw-next aria-label="Next gameweek">&rsaquo;</button>
+                    </div>
                 </div>
                 <div class="live-fixtures-grid" data-home-live-fixtures-grid>
                     <article class="live-fixture-card">

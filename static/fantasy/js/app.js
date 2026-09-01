@@ -33,6 +33,37 @@ window.buildPlayerAvatar = function buildPlayerAvatar(name, photoUrl, shirtUrl, 
     return `<span class="${className} ${className}--fallback">${initial}</span>`;
 };
 
+// Shared Live Fixtures card markup - the dashboard's default (current
+// gameweek) load and its prev/next gameweek pager both need to render the
+// exact same card shape.
+window.renderLiveFixturesGrid = function renderLiveFixturesGrid(grid, fixtures) {
+    if (!fixtures || !fixtures.length) {
+        grid.innerHTML = '<article class="live-fixture-card"><p>No live fixture data available right now.</p></article>';
+        return;
+    }
+    grid.innerHTML = fixtures
+        .map((fixture) => `
+            <article class="live-fixture-card">
+                <div class="fixture-teams">
+                    <div class="fixture-team">
+                        ${fixture.home_team.shirt_url ? `<img class="fixture-team__shirt" src="${fixture.home_team.shirt_url}" alt="${fixture.home_team.short_name} shirt" loading="lazy">` : ''}
+                        <strong>${fixture.home_team.short_name}</strong>
+                    </div>
+                    <span>vs</span>
+                    <div class="fixture-team">
+                        ${fixture.away_team.shirt_url ? `<img class="fixture-team__shirt" src="${fixture.away_team.shirt_url}" alt="${fixture.away_team.short_name} shirt" loading="lazy">` : ''}
+                        <strong>${fixture.away_team.short_name}</strong>
+                    </div>
+                </div>
+                <div class="fixture-status${fixture.status === 'LIVE' ? ' fixture-status--live' : ''}">${fixture.status}</div>
+                ${fixture.status === 'Upcoming'
+                    ? `<p>${fixture.kickoff_display}</p>`
+                    : `<p class="fixture-score">${fixture.home_score || 0} - ${fixture.away_score || 0}</p>`}
+            </article>
+        `)
+        .join('');
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const items = document.querySelectorAll('.reveal');
     items.forEach((item, index) => {
@@ -506,38 +537,30 @@ document.addEventListener('DOMContentLoaded', () => {
             renderStatSpotlight('[data-home-top-assister]', dashboard.top_assister, 'Assists', 'assists');
             renderStatSpotlight('[data-home-top-clean-sheet]', dashboard.top_clean_sheet, 'Clean Sheets', 'clean_sheets');
 
-            const liveLabel = document.querySelector('[data-home-live-fixtures-label]');
-            if (liveLabel) {
-                liveLabel.textContent = dashboard.live_fixtures_label || 'Upcoming';
+            const gwPager = document.querySelector('[data-gw-pager]');
+            // Only touch the Live Fixtures label/grid/pager state on its
+            // very first render - the 45s background poll re-runs this
+            // same code, and without this guard it was silently snapping
+            // someone back to the current gameweek's fixtures while they
+            // were browsing an earlier one.
+            if (!gwPager || gwPager.dataset.userNavigated !== 'true') {
+                const liveLabel = document.querySelector('[data-home-live-fixtures-label]');
+                if (liveLabel) {
+                    liveLabel.textContent = dashboard.live_fixtures_label || 'Upcoming';
+                }
+
+                const liveGrid = document.querySelector('[data-home-live-fixtures-grid]');
+                if (liveGrid) {
+                    window.renderLiveFixturesGrid(liveGrid, dashboard.live_fixtures || []);
+                }
             }
 
-            const liveGrid = document.querySelector('[data-home-live-fixtures-grid]');
-            if (liveGrid) {
-                const liveFixtures = dashboard.live_fixtures || [];
-                if (!liveFixtures.length) {
-                    liveGrid.innerHTML = '<article class="live-fixture-card"><p>No live fixture data available right now.</p></article>';
-                } else {
-                    liveGrid.innerHTML = liveFixtures
-                        .map((fixture) => `
-                            <article class="live-fixture-card">
-                                <div class="fixture-teams">
-                                    <div class="fixture-team">
-                                        ${fixture.home_team.shirt_url ? `<img class="fixture-team__shirt" src="${fixture.home_team.shirt_url}" alt="${fixture.home_team.short_name} shirt" loading="lazy">` : ''}
-                                        <strong>${fixture.home_team.short_name}</strong>
-                                    </div>
-                                    <span>vs</span>
-                                    <div class="fixture-team">
-                                        ${fixture.away_team.shirt_url ? `<img class="fixture-team__shirt" src="${fixture.away_team.shirt_url}" alt="${fixture.away_team.short_name} shirt" loading="lazy">` : ''}
-                                        <strong>${fixture.away_team.short_name}</strong>
-                                    </div>
-                                </div>
-                                <div class="fixture-status${fixture.status === 'LIVE' ? ' fixture-status--live' : ''}">${fixture.status}</div>
-                                ${fixture.status === 'Upcoming'
-                                    ? `<p>${fixture.kickoff_display}</p>`
-                                    : `<p class="fixture-score">${fixture.home_score || 0} - ${fixture.away_score || 0}</p>`}
-                            </article>
-                        `)
-                        .join('');
+            if (gwPager && gwPager.dataset.userNavigated !== 'true') {
+                gwPager.dataset.gw = dashboard.live_fixtures_gameweek || '';
+                gwPager.dataset.minGw = dashboard.live_fixtures_min_gw || 1;
+                gwPager.dataset.maxGw = dashboard.live_fixtures_max_gw || 38;
+                if (window.updateGwPagerButtons) {
+                    window.updateGwPagerButtons(gwPager);
                 }
             }
 
@@ -778,5 +801,64 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(() => {
                 achievementsBox.remove();
             });
+    }
+
+    // Dashboard's Live Fixtures prev/next gameweek pager.
+    const gwPagerEl = document.querySelector('[data-gw-pager]');
+    if (gwPagerEl) {
+        const prevBtn = gwPagerEl.querySelector('[data-gw-prev]');
+        const nextBtn = gwPagerEl.querySelector('[data-gw-next]');
+        const label = gwPagerEl.querySelector('[data-home-live-fixtures-label]');
+        const grid = gwPagerEl.querySelector('[data-home-live-fixtures-grid]');
+
+        const updateButtons = () => {
+            const gw = parseInt(gwPagerEl.dataset.gw, 10) || 1;
+            const minGw = parseInt(gwPagerEl.dataset.minGw, 10) || 1;
+            const maxGw = parseInt(gwPagerEl.dataset.maxGw, 10) || 38;
+            prevBtn.disabled = gw <= minGw;
+            nextBtn.disabled = gw >= maxGw;
+        };
+        window.updateGwPagerButtons = updateButtons;
+
+        const loadGameweek = (gw) => {
+            grid.innerHTML = '<article class="live-fixture-card"><p>Loading live fixtures&hellip;</p></article>';
+            fetch(`/api/league-live-data/?section=live_fixtures&gameweek=${gw}`)
+                .then((res) => res.json())
+                .then((payload) => {
+                    const page = payload.live_fixtures_page;
+                    if (!page) {
+                        return;
+                    }
+                    gwPagerEl.dataset.gw = page.gameweek;
+                    gwPagerEl.dataset.minGw = page.min_gameweek;
+                    gwPagerEl.dataset.maxGw = page.max_gameweek;
+                    gwPagerEl.dataset.userNavigated = 'true';
+                    if (label) {
+                        label.textContent = `GW ${page.gameweek}`;
+                    }
+                    window.renderLiveFixturesGrid(grid, page.fixtures || []);
+                    updateButtons();
+                })
+                .catch(() => {
+                    grid.innerHTML = '<article class="live-fixture-card"><p>Could not load fixtures right now.</p></article>';
+                });
+        };
+
+        prevBtn.addEventListener('click', () => {
+            const gw = parseInt(gwPagerEl.dataset.gw, 10) || 1;
+            const minGw = parseInt(gwPagerEl.dataset.minGw, 10) || 1;
+            if (gw > minGw) {
+                loadGameweek(gw - 1);
+            }
+        });
+        nextBtn.addEventListener('click', () => {
+            const gw = parseInt(gwPagerEl.dataset.gw, 10) || 1;
+            const maxGw = parseInt(gwPagerEl.dataset.maxGw, 10) || 38;
+            if (gw < maxGw) {
+                loadGameweek(gw + 1);
+            }
+        });
+
+        updateButtons();
     }
 });
