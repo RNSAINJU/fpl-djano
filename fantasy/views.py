@@ -58,7 +58,12 @@ def _get_json(url: str) -> dict:
 def _photo_url_from_code(code: int | str | None) -> str:
 	if not code:
 		return ''
-	return f'https://resources.premierleague.com/premierleague/photos/players/250x250/p{code}.png'
+	# The 'premierleague/.../250x250/p{code}.png' path (no season segment,
+	# 'p'-prefixed) 403s for a lot of real, current players (confirmed via
+	# direct request - a genuine "Access Denied" from the CDN, not a code
+	# bug) - e.g. Cherki, Mendy. This season-scoped bucket, un-prefixed
+	# code, and 110x140 size resolves every one of those same codes.
+	return f'https://resources.premierleague.com/premierleague25/photos/players/110x140/{code}.png'
 
 
 def _shirt_url_from_code(code: int | str | None) -> str:
