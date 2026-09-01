@@ -1193,12 +1193,21 @@ def _fetch_gameweek_leaderboard_live(
 		current_gameweek = current_event.get('id') if current_event and not current_event.get('finished') else None
 
 		# Kept separate from available_gameweeks below (which also includes
-		# the current/next gameweek purely so there's something selectable) -
+		# the current gameweek purely so there's something selectable) -
 		# this is the set that actually determines whether a winner can be
 		# revealed yet.
 		truly_finished_gameweeks = {event['id'] for event in events if event.get('finished')}
+		latest_finished_gameweek = max(truly_finished_gameweeks) if truly_finished_gameweeks else None
 		finished_gameweeks = set(truly_finished_gameweeks)
-		reference_gameweek = current_gameweek or (next_event.get('id') if next_event else None)
+		# Only ever default/offer a gameweek that has actually started (its
+		# deadline passed, so squads are locked and points are possible) -
+		# the *next* gameweek only becomes eligible once FPL flips
+		# is_current to it, right at its own deadline. Falling back to
+		# next_event here (as this used to) meant that the moment a
+		# gameweek finished, the page jumped straight to the *following*
+		# gameweek - where nobody has any points yet - and crowned whichever
+		# manager happened to sort first as its "winner".
+		reference_gameweek = current_gameweek or latest_finished_gameweek or (next_event.get('id') if next_event else None)
 		if reference_gameweek:
 			finished_gameweeks.add(reference_gameweek)
 		available_gameweeks = sorted(finished_gameweeks)
@@ -1351,15 +1360,22 @@ def _fetch_monthly_leaderboard_live(
 		# yet, otherwise the live top-up below re-adds a gameweek that's
 		# already counted in CaptainGameweekScore's stored total.
 		current_gameweek = current_event.get('id') if current_event and not current_event.get('finished') else None
+		truly_finished_gameweek_ids = {event['id'] for event in events if event.get('finished')}
+		latest_finished_gameweek = max(truly_finished_gameweek_ids) if truly_finished_gameweek_ids else None
 
 		gameweek_month_map = _gameweek_month_map(events)
 
 		stored_gameweeks = CaptainGameweekScore.objects.values_list('gameweek', flat=True).distinct()
 		months_with_data = {gameweek_month_map[gw] for gw in stored_gameweeks if gw in gameweek_month_map}
 
-		# Always include the current-or-next gameweek's month too, so there's
-		# a sensible month to land on before any month has finished.
-		reference_gameweek = current_gameweek or (next_event.get('id') if next_event else None)
+		# Always include the current (or, pre-season, next) gameweek's month
+		# too, so there's a sensible month to land on before any month has
+		# finished. Deliberately NOT falling back to next_event once a
+		# current/latest-finished gameweek exists - otherwise the moment a
+		# gameweek finishes, this would jump straight to the *following*
+		# month/gameweek where nobody has any points yet and crown whichever
+		# manager happened to sort first as its "winner".
+		reference_gameweek = current_gameweek or latest_finished_gameweek or (next_event.get('id') if next_event else None)
 		reference_month = gameweek_month_map.get(reference_gameweek) if reference_gameweek else None
 		if reference_month:
 			months_with_data.add(reference_month)
@@ -1377,7 +1393,6 @@ def _fetch_monthly_leaderboard_live(
 		# currently in progress", since pre-season there's no current
 		# gameweek at all (GW1 is only 'next' until its deadline passes),
 		# which would otherwise make an unstarted month look finished.
-		truly_finished_gameweek_ids = {event['id'] for event in events if event.get('finished')}
 		selected_month_finished = bool(gameweeks_in_month) and all(
 			gw in truly_finished_gameweek_ids for gw in gameweeks_in_month
 		)
