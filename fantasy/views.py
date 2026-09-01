@@ -1725,24 +1725,33 @@ def _fetch_manager_achievements_live(entry_id: int) -> dict:
 		# Current standing (as opposed to the titles above, which only ever
 		# look at already-finished periods) - reuses each page's own cached
 		# leaderboard function, since this needs to reflect live in-progress
-		# gameweek data the same way those pages themselves do.
+		# gameweek data the same way those pages themselves do. Fetched
+		# concurrently, not one after another - each of these is only slow
+		# on a cache miss (a live per-manager fan-out), but on a cold cache
+		# doing all three sequentially could take 15-20s+, long enough to
+		# occasionally trip gunicorn's worker timeout and 502 the request.
 		current_positions = {}
+		with ThreadPoolExecutor(max_workers=3) as executor:
+			classic_future = executor.submit(_resolved_league_dataset)
+			captain_future = executor.submit(_fetch_captain_leaderboard)
+			monthly_future = executor.submit(_fetch_monthly_leaderboard)
 
-		classic_rows, _league_name, _league_error, _source = _resolved_league_dataset()
+			classic_rows, _league_name, _league_error, _source = classic_future.result()
+			captain_leaderboard, _status, _cap_error = captain_future.result()
+			monthly_data = monthly_future.result()
+
 		classic_row = next((row for row in classic_rows if row.get('entry_id') == entry_id), None)
 		if classic_row:
 			current_positions['classic_rank'] = classic_row.get('rank')
 			current_positions['classic_points'] = classic_row.get('total_points')
 			current_positions['classic_total_entries'] = len(classic_rows)
 
-		captain_leaderboard, _status, _cap_error = _fetch_captain_leaderboard()
 		captain_row = next((row for row in captain_leaderboard if row.get('entry_id') == entry_id), None)
 		if captain_row:
 			current_positions['captain_rank'] = captain_row.get('rank')
 			current_positions['captain_points'] = captain_row.get('captain_points')
 			current_positions['captain_total_entries'] = len(captain_leaderboard)
 
-		monthly_data = _fetch_monthly_leaderboard()
 		monthly_row = next(
 			(row for row in monthly_data.get('all_rankings', []) if row.get('entry_id') == entry_id), None
 		)
