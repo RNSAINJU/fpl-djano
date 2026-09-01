@@ -1359,6 +1359,27 @@ td small {
     font-size: 24px;
 }
 
+@media (max-width: 620px) {
+    /* The sealed score's "Sealed until season ends" label has
+       white-space: nowrap on desktop, which forces the flex-shrink: 0
+       score column to claim its full nowrap width. On narrow screens
+       that leaves almost nothing for the name column next to it, so the
+       placeholder text collapses to one word (or fewer) per line with
+       mid-word breaks. Letting the label wrap and capping the score
+       column's width gives the name column enough room to wrap normally. */
+    .winner-spotlight--sealed .winner-spotlight__score {
+        max-width: 84px;
+    }
+
+    .winner-spotlight--sealed .winner-spotlight__score span {
+        white-space: normal;
+    }
+
+    .winner-spotlight--sealed .winner-spotlight__name--sealed {
+        font-size: 16px;
+    }
+}
+
 /* Current Squad, laid out like the FPL app's own pitch view: rows of
    jersey icons grouped GK -> DEF -> MID -> FWD on a green pitch, with the
    4 substitutes in their own strip underneath. */
