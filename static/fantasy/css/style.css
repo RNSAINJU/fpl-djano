@@ -872,22 +872,30 @@ body {
     margin-bottom: 10px;
 }
 
-/* Live Fixtures' prev/next gameweek pager. */
+/* Live Fixtures' prev/next gameweek pager. #live-fixtures itself was
+   re-themed light (see the "lighter variant" rule above), so this reads
+   as a light pill with two small square buttons either side of a bold
+   "GW N" label - not the dark/translucent styling that would suit a
+   still-dark board like Team of the Week. */
 .gw-pager {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    border: 1px solid var(--outline);
 }
 
 .gw-pager__btn {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid var(--outline);
+    background: var(--surface);
+    color: var(--brand);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
@@ -895,7 +903,7 @@ body {
 }
 
 .gw-pager__btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.22);
+    background: rgba(55, 0, 60, 0.08);
 }
 
 .gw-pager__btn:disabled {
@@ -904,13 +912,21 @@ body {
 }
 
 .gw-pager__label {
-    min-width: 52px;
+    min-width: 48px;
     text-align: center;
-    padding: 4px 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.12);
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--brand);
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+/* #live-fixtures's own light-theme rework generically pills every span in
+   its header (used elsewhere for the "GW N" static label on other
+   boards) - override it here so this label sits as plain text inside the
+   .gw-pager capsule instead of getting a second, redundant pill drawn
+   behind it. */
+#live-fixtures .gw-pager__label {
+    background: transparent;
 }
 
 .live-fixtures-head h4 {
