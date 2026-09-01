@@ -121,6 +121,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // The bottom tab bar holds all 8 sidebar links and scrolls
+    // horizontally rather than trimming down to a handful - so on a page
+    // whose tab sits further along the strip (e.g. Past Seasons, the last
+    // one), scroll it into view on load instead of leaving the visitor to
+    // discover it's scrollable on their own.
+    const activeBottomNavItem = document.querySelector('.bottom-nav__item.active');
+    if (activeBottomNavItem) {
+        activeBottomNavItem.scrollIntoView({ inline: 'center', block: 'nearest' });
+    }
+
     const countdown = document.querySelector('.countdown[data-target]');
     if (countdown) {
         const targetAttr = countdown.getAttribute('data-target');
