@@ -287,6 +287,46 @@ body {
     font-family: 'Space Grotesk', sans-serif;
 }
 
+.team-hero__manager {
+    margin: 2px 0 0;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 14px;
+}
+
+/* The shared chip-history component defaults to dark text on a light
+   translucent-purple pill (fine on a white card) - team-hero's own
+   background is dark purple, which made that combination nearly
+   unreadable (the same dark-on-dark problem the Team of the Week points
+   pill had). Scoped override, not a change to the component itself,
+   since every other place it's used sits on a light card. */
+.team-hero .chip-history {
+    margin-top: 14px;
+}
+
+.team-hero .chip-history__label {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.team-hero .chip-history__empty {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.team-hero .chip-history__item {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+.team-hero .chip-history__item small {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.team-hero .chip-history__item--title {
+    background: rgba(0, 255, 135, 0.2);
+    border-color: rgba(0, 255, 135, 0.4);
+    color: #00ff87;
+}
+
 .ghost-button,
 .chip {
     color: #d5ccf5;

@@ -43,9 +43,16 @@
             <section class="team-hero reveal" id="dashboard">
                 <div>
                     <p class="kicker">{{ gameweek_name }}</p>
-                    <h3>Your team</h3>
+                    <h3>{% if saved_team %}{{ saved_team.team_name }}{% else %}Your team{% endif %}</h3>
+                    {% if saved_team %}
+                    <p class="team-hero__manager">{{ saved_team.manager_name }}</p>
+                    <div class="chip-history" data-achievements-loading data-entry-id="{{ saved_team.entry_id }}">
+                        <p class="chip-history__label">Standings</p>
+                        <p class="chip-history__empty">Loading&hellip;</p>
+                    </div>
+                    {% endif %}
                 </div>
-                <a class="ghost-button" href="{% url 'fantasy:live_gameweek' %}">Switch team</a>
+                <a class="ghost-button" href="{% url 'fantasy:live_gameweek' %}">{% if saved_team %}Switch team{% else %}Add your team{% endif %}</a>
             </section>
 
             <section class="status-grid">
