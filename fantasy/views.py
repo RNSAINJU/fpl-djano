@@ -1570,25 +1570,31 @@ def _fetch_gameweek_history(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> dict:
 			'entry_id': entry_id,
 			'manager_name': manager_name,
 			'team_name': item.get('entry_name', 'Unknown Team'),
-			'points_by_gameweek': {},
+			'gameweek_data': {},
 			'total_points': 0,
+			'total_captain_points': 0,
 		}
 
 	score_rows = CaptainGameweekScore.objects.filter(entry_id__in=managers.keys()).values(
-		'entry_id', 'gameweek', 'gameweek_points'
+		'entry_id', 'gameweek', 'gameweek_points', 'captain_name', 'captain_points'
 	)
 	gameweek_ids = sorted({row['gameweek'] for row in score_rows})
 	for row in score_rows:
 		manager = managers.get(row['entry_id'])
 		if manager:
-			manager['points_by_gameweek'][row['gameweek']] = row['gameweek_points']
+			manager['gameweek_data'][row['gameweek']] = {
+				'points': row['gameweek_points'],
+				'captain_name': row['captain_name'],
+				'captain_points': row['captain_points'],
+			}
 			manager['total_points'] += row['gameweek_points']
+			manager['total_captain_points'] += row['captain_points']
 
 	history_rows = list(managers.values())
 	history_rows.sort(key=lambda row: row['total_points'], reverse=True)
 	for row in history_rows:
 		row['rank'] = 1 + sum(1 for other in history_rows if other['total_points'] > row['total_points'])
-		row['points_row'] = [row['points_by_gameweek'].get(gw) for gw in gameweek_ids]
+		row['points_row'] = [row['gameweek_data'].get(gw) for gw in gameweek_ids]
 
 	return {
 		'gameweek_history_ids': gameweek_ids,

@@ -113,7 +113,7 @@
             <section class="card reveal">
                 <header class="card-header">
                     <h4>Gameweek History</h4>
-                    <span>Points by gameweek</span>
+                    <span>Points and captain picks by gameweek</span>
                 </header>
                 <div class="table-wrap">
                     <table>
@@ -126,6 +126,7 @@
                                 <th>GW{{ gw }}</th>
                                 {% endfor %}
                                 <th>Total</th>
+                                <th>Captain Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -134,14 +135,22 @@
                                 <td>#{{ row.rank }}</td>
                                 <td>{{ row.manager_name }}</td>
                                 <td>{{ row.team_name }}</td>
-                                {% for pts in row.points_row %}
-                                <td>{{ pts|default_if_none:'-' }}</td>
+                                {% for gw_data in row.points_row %}
+                                <td>
+                                    {% if gw_data %}
+                                    {{ gw_data.points }}<br>
+                                    <small>C: {{ gw_data.captain_name|default:'-' }} ({{ gw_data.captain_points }})</small>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
                                 {% endfor %}
                                 <td><strong>{{ row.total_points }}</strong></td>
+                                <td>{{ row.total_captain_points }}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4">No finished gameweeks yet.</td>
+                                <td colspan="5">No finished gameweeks yet.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
