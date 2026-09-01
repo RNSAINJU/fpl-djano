@@ -108,6 +108,33 @@ def _live_net_gameweek_points(picks_payload: dict, live_points_by_player: dict[i
 	return gross - hits
 
 
+def _fetch_saved_team_summary(entry_id: int) -> dict | None:
+	return cache.get_or_set(
+		f'fpl:saved_team_summary:{entry_id}',
+		lambda: _fetch_saved_team_summary_live(entry_id),
+		timeout=FPL_CACHE_TIMEOUT,
+	)
+
+
+def _fetch_saved_team_summary_live(entry_id: int) -> dict | None:
+	"""Just enough to render the "Your Team" chip shown site-wide once a
+	manager has saved an FPL ID (via site_team in context_processors.py) -
+	a single /entry/{id}/ call, not the full picks/points/live-element
+	fetch live_gameweek itself needs."""
+	try:
+		entry = _get_json(f'https://fantasy.premierleague.com/api/entry/{entry_id}/')
+		manager_name = f"{entry.get('player_first_name', '')} {entry.get('player_last_name', '')}".strip() or 'FPL Manager'
+		initials = ''.join(part[0] for part in manager_name.split()[:2] if part).upper() or 'FM'
+		return {
+			'entry_id': entry_id,
+			'team_name': entry.get('name', 'Unknown Team'),
+			'manager_name': manager_name,
+			'initials': initials,
+		}
+	except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+		return None
+
+
 def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
 	# A short cache, not the usual FPL_CACHE_TIMEOUT - this is a per-manager
 	# lookup (entry info, picks, and a full live/{gw}/ points fetch), which

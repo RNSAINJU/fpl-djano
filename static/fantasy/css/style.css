@@ -173,6 +173,62 @@ body {
     min-height: 40px;
 }
 
+/* "Your Team" chip - shown site-wide in the topbar once a manager has
+   saved their FPL ID on the Live Tracker page, so every other page can
+   link straight back to it instead of that only being reachable from
+   Live Tracker itself. */
+.topteam-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    text-decoration: none;
+    color: #fff;
+    flex-shrink: 0;
+    min-height: 40px;
+    box-sizing: border-box;
+}
+
+.topteam-chip__avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(140deg, #00ff87, #00b368);
+    color: #04231a;
+    display: grid;
+    place-items: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.topteam-chip__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    min-width: 0;
+}
+
+.topteam-chip__text strong {
+    font-size: 13px;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+
+.topteam-chip__text small {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.04rem;
+}
+
 .sidebar-toggle {
     display: none;
     align-items: center;
@@ -2148,6 +2204,18 @@ td small {
     .topbar-button {
         padding: 8px 10px;
         font-size: 13px;
+    }
+
+    /* Room's too tight for a 4th topbar element's text on a phone screen
+       (Menu + title + this + the page's own topbar-button) - keep just
+       the avatar, which still links through to the team. */
+    .topteam-chip {
+        padding: 4px;
+        min-height: 32px;
+    }
+
+    .topteam-chip__text {
+        display: none;
     }
 
     .fixture-team__shirt {

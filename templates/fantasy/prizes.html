@@ -30,6 +30,12 @@
         <header class="topbar">
             <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
             <h2>FPL Bhaktapur</h2>
+            {% if saved_team %}
+            <a class="topteam-chip" href="{% url 'fantasy:live_gameweek' %}">
+                <span class="topteam-chip__avatar">{{ saved_team.initials }}</span>
+                <span class="topteam-chip__text"><strong>{{ saved_team.team_name }}</strong><small>View team</small></span>
+            </a>
+            {% endif %}
             <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to dashboard</a>
         </header>
 

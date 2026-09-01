@@ -15,6 +15,22 @@ def site_branding(request):
 	}
 
 
+def saved_team(request):
+	"""The "Your Team" chip shown site-wide once a manager has entered
+	their FPL ID on the Live Tracker page (fpl_entry_id saved to their
+	session there) - lets every other page link straight back to their
+	own team instead of that only being reachable from live_gameweek."""
+	entry_id = request.session.get('fpl_entry_id')
+	if not entry_id:
+		return {'saved_team': None}
+	from .views import _fetch_saved_team_summary
+
+	try:
+		return {'saved_team': _fetch_saved_team_summary(int(entry_id))}
+	except (TypeError, ValueError):
+		return {'saved_team': None}
+
+
 def _mtime_version(static_path: str) -> int:
 	try:
 		path = finders.find(static_path)

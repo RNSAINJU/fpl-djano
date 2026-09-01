@@ -90,6 +90,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'fantasy.context_processors.site_branding',
                 'fantasy.context_processors.static_version',
+                'fantasy.context_processors.saved_team',
             ],
         },
     },
