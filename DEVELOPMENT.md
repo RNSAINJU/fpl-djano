@@ -165,6 +165,18 @@ Brand palette (both public site and admin): deep purple `#37003c`
   (never overwritten for an already-stored (entry, gameweek) pair — a
   manual admin edit there is permanent). The currently in-progress
   gameweek (if any) is always computed live on top, never from this table.
+- **The sync-cron gap.** Between a gameweek finishing and `sync_fpl_data`
+  next running, `current_gameweek` is correctly `None` (see the
+  `is_current` trap above) *and* `CaptainGameweekScore` doesn't have that
+  gameweek's rows yet — so for that window, Captain Mode/Gameweek
+  Winners/Manager of the Month/Classic League's season totals are
+  genuinely missing the just-finished gameweek's points (not a code bug,
+  just an unsynced window). `sync_fpl_data` runs via cron
+  (`crontab -u rnsainju -l`) every 15 minutes to keep this window small —
+  it was every 3 hours until 2026-09-01, which is what caused a "captain
+  mode isn't totaling all gameweeks" report right after a gameweek ended.
+  If this happens again, check `sync_fpl_data.log`'s last run time before
+  assuming the totaling logic itself regressed.
 - **Async-load slow sections.** Anything that loops over multiple
   gameweeks/months to compute a per-manager result (e.g. Live Tracker's
   "League Achievements") must **not** run synchronously inside the page
