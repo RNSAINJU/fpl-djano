@@ -1914,10 +1914,15 @@ td small {
 }
 
 .totw-player__points {
+    /* A translucent green pill was barely legible against this board's
+       dark purple background (dark-on-dark, both muddied further by the
+       transparency) - solid brand purple + white matches the same points
+       pill already used on the pitch view for the same "dark background,
+       needs a readable points badge" situation. */
     padding: 2px 8px;
     border-radius: 999px;
-    background: rgba(0, 255, 135, 0.22);
-    color: #04231a;
+    background: var(--brand);
+    color: #fff;
     font-size: 11px;
     font-weight: 700;
 }
