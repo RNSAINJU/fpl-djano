@@ -1735,9 +1735,13 @@ td small {
 
 .manager-stats {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
     gap: 10px;
     margin-top: 12px;
+}
+
+.manager-stats--secondary {
+    margin-top: 10px;
 }
 
 .manager-stats__item {
@@ -1746,11 +1750,26 @@ td small {
     background: var(--surface-soft);
     border: 1px solid var(--outline);
     text-align: center;
+    min-width: 0;
+}
+
+.manager-stats__item--small {
+    padding: 8px;
 }
 
 .manager-stats__item--active-chip {
     background: rgba(0, 255, 135, 0.12);
     border-color: rgba(0, 113, 63, 0.35);
+}
+
+.manager-stats__item--highlight {
+    background: linear-gradient(135deg, #2d81f0, #6f4dff);
+    border-color: transparent;
+}
+
+.manager-stats__item--highlight .manager-stats__value,
+.manager-stats__item--highlight .manager-stats__label {
+    color: #fff;
 }
 
 .manager-stats__value {
@@ -1770,6 +1789,53 @@ td small {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04rem;
+}
+
+.manager-stats__label small {
+    display: block;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 10px;
+}
+
+.gw-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 16px;
+    padding: 10px 16px;
+}
+
+.gw-nav__btn {
+    color: var(--brand);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--outline);
+    background: var(--surface-soft);
+    white-space: nowrap;
+}
+
+.gw-nav__btn:hover {
+    background: var(--outline);
+}
+
+.gw-nav__btn--disabled {
+    color: var(--text-muted);
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.gw-nav__label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-dark);
 }
 
 .chip-history {

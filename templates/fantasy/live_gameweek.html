@@ -91,6 +91,14 @@
             </section>
 
             {% if live_data %}
+            <section class="gw-nav reveal">
+                <a class="gw-nav__btn{% if not live_data.prev_gameweek %} gw-nav__btn--disabled{% endif %}"
+                   {% if live_data.prev_gameweek %}href="{% url 'fantasy:live_gameweek' %}?entry_id={{ live_data.entry_id }}&amp;gameweek={{ live_data.prev_gameweek }}"{% endif %}>&lsaquo; Previous</a>
+                <span class="gw-nav__label">GW{{ live_data.current_gameweek }}</span>
+                <a class="gw-nav__btn{% if not live_data.next_gameweek %} gw-nav__btn--disabled{% endif %}"
+                   {% if live_data.next_gameweek %}href="{% url 'fantasy:live_gameweek' %}?entry_id={{ live_data.entry_id }}&amp;gameweek={{ live_data.next_gameweek }}"{% endif %}>Next &rsaquo;</a>
+            </section>
+
             <section class="insight-grid">
                 <article class="card reveal">
                     <header class="card-header">
@@ -102,21 +110,55 @@
                             <p class="manager-hero__label">Manager</p>
                             <p class="manager-hero__name">{{ live_data.manager_name }}</p>
                         </div>
-                        <div class="manager-hero__score">
-                            <strong>{{ live_data.event_points }}</strong>
-                            <span>GW{{ live_data.current_gameweek }} Points</span>
-                        </div>
                     </div>
                     <div class="manager-stats">
+                        <div class="manager-stats__item manager-stats__item--highlight">
+                            <p class="manager-stats__value">{{ live_data.event_points }}</p>
+                            <p class="manager-stats__label">GW Points</p>
+                        </div>
                         <div class="manager-stats__item">
                             <p class="manager-stats__value">{{ live_data.overall_points }}</p>
                             <p class="manager-stats__label">Overall Points</p>
                         </div>
                         <div class="manager-stats__item">
+                            <p class="manager-stats__value">{{ live_data.event_rank|default:'-' }}</p>
+                            <p class="manager-stats__label">GW Rank</p>
+                        </div>
+                        <div class="manager-stats__item">
                             <p class="manager-stats__value">{{ live_data.overall_rank }}</p>
                             <p class="manager-stats__label">Overall Rank</p>
                         </div>
-                        <div class="manager-stats__item{% if live_data.active_chip %} manager-stats__item--active-chip{% endif %}">
+                        <div class="manager-stats__item">
+                            <p class="manager-stats__value">{{ live_data.event_transfers }}</p>
+                            <p class="manager-stats__label">Transfers{% if live_data.event_transfers_cost %} <small>(-{{ live_data.event_transfers_cost }})</small>{% else %} <small>No hit</small>{% endif %}</p>
+                        </div>
+                    </div>
+                    <div class="manager-stats manager-stats--secondary">
+                        <div class="manager-stats__item manager-stats__item--small">
+                            <p class="manager-stats__value">{{ live_data.average_score|default:'-' }}</p>
+                            <p class="manager-stats__label">Average</p>
+                        </div>
+                        <div class="manager-stats__item manager-stats__item--small">
+                            <p class="manager-stats__value">{{ live_data.highest_score|default:'-' }}</p>
+                            <p class="manager-stats__label">Highest</p>
+                        </div>
+                        <div class="manager-stats__item manager-stats__item--small">
+                            <p class="manager-stats__value">{{ live_data.points_on_bench }}</p>
+                            <p class="manager-stats__label">Bench pts</p>
+                        </div>
+                        <div class="manager-stats__item manager-stats__item--small">
+                            <p class="manager-stats__value">&pound;{{ live_data.team_value }}m</p>
+                            <p class="manager-stats__label">Team value</p>
+                        </div>
+                        <div class="manager-stats__item manager-stats__item--small">
+                            <p class="manager-stats__value">&pound;{{ live_data.bank }}m</p>
+                            <p class="manager-stats__label">In the bank</p>
+                        </div>
+                        <div class="manager-stats__item manager-stats__item--small">
+                            <p class="manager-stats__value">{{ live_data.captain_name }}</p>
+                            <p class="manager-stats__label">Captain</p>
+                        </div>
+                        <div class="manager-stats__item manager-stats__item--small{% if live_data.active_chip %} manager-stats__item--active-chip{% endif %}">
                             <p class="manager-stats__value">{{ live_data.active_chip|default:'None' }}</p>
                             <p class="manager-stats__label">Active Chip</p>
                         </div>

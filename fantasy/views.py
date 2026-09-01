@@ -204,16 +204,21 @@ def _fetch_saved_team_summary_live(entry_id: int) -> dict | None:
 		return None
 
 
-def _fetch_fpl_live_data(entry_id: int) -> tuple[dict | None, str | None]:
+def _fetch_fpl_live_data(entry_id: int, gameweek: int | None = None) -> tuple[dict | None, str | None]:
 	# A short cache, not the usual FPL_CACHE_TIMEOUT - this is a per-manager
 	# lookup (entry info, picks, and a full live/{gw}/ points fetch), which
 	# on an uncached run was taking 4-5s and making every visit and refresh
 	# of this page repeat that in full. 60s keeps it feeling live while
-	# absorbing back-to-back page loads/refreshes.
-	return cache.get_or_set(f'fpl:live_data:{entry_id}', lambda: _fetch_fpl_live_data_live(entry_id), timeout=60)
+	# absorbing back-to-back page loads/refreshes. Keyed by gameweek too,
+	# since browsing to a past gameweek fetches that gameweek's own picks.
+	return cache.get_or_set(
+		f'fpl:live_data:{entry_id}:{gameweek or "current"}',
+		lambda: _fetch_fpl_live_data_live(entry_id, gameweek),
+		timeout=60,
+	)
 
 
-def _fetch_fpl_live_data_live(entry_id: int) -> tuple[dict | None, str | None]:
+def _fetch_fpl_live_data_live(entry_id: int, gameweek: int | None = None) -> tuple[dict | None, str | None]:
 	base_url = 'https://fantasy.premierleague.com/api'
 	try:
 		entry = _get_json(f'{base_url}/entry/{entry_id}/')
@@ -221,14 +226,19 @@ def _fetch_fpl_live_data_live(entry_id: int) -> tuple[dict | None, str | None]:
 		events = bootstrap.get('events', [])
 		current_event = next((event for event in events if event.get('is_current')), None)
 		next_event = next((event for event in events if event.get('is_next')), None)
-		target_event = current_event or next_event
-		if not target_event:
+		default_event = current_event or next_event
+		if not default_event:
 			return None, 'Could not determine gameweek from FPL API.'
 
-		current_gameweek = target_event.get('id')
+		# Never navigate past whichever gameweek is current/next - a
+		# manager's own picks for anything beyond that don't exist yet.
+		latest_gameweek = default_event.get('id')
+		target_gameweek = gameweek if gameweek and 1 <= gameweek <= latest_gameweek else latest_gameweek
+		target_event = next((event for event in events if event['id'] == target_gameweek), default_event)
+
 		picks = {'picks': []}
 		try:
-			picks = _get_json(f'{base_url}/entry/{entry_id}/event/{current_gameweek}/picks/')
+			picks = _get_json(f'{base_url}/entry/{entry_id}/event/{target_gameweek}/picks/')
 		except error.HTTPError:
 			# Some entries have no published picks for upcoming gameweek yet.
 			picks = {'picks': []}
@@ -242,7 +252,7 @@ def _fetch_fpl_live_data_live(entry_id: int) -> tuple[dict | None, str | None]:
 			3: 'MID',
 			4: 'FWD',
 		}
-		live_points_by_player = _fetch_live_element_points(current_gameweek)
+		live_points_by_player = _fetch_live_element_points(target_gameweek)
 
 		team_picks = []
 		for pick in picks.get('picks', []):
@@ -280,18 +290,40 @@ def _fetch_fpl_live_data_live(entry_id: int) -> tuple[dict | None, str | None]:
 			if row_players:
 				pitch_rows.append({'label': label, 'players': row_players})
 
+		captain_name = next((pick['name'] for pick in team_picks if pick['captain_tag'] == 'C'), '-')
+
+		# entry_history.points lags the true live score during an actively
+		# in-progress gameweek (see _live_net_gameweek_points) - recompute
+		# it the same reliable way here instead of trusting that field,
+		# which also means this works identically whether target_gameweek
+		# is the live one or a past, already-finished one.
+		entry_history = picks.get('entry_history', {})
+		event_points = _live_net_gameweek_points(picks, live_points_by_player) if picks.get('picks') else entry_history.get('points', 0)
+
 		data = {
 			'entry_id': entry_id,
 			'manager_name': f"{entry.get('player_first_name', '')} {entry.get('player_last_name', '')}".strip() or 'FPL Manager',
 			'team_name': entry.get('name', 'Unknown Team'),
 			'overall_points': entry.get('summary_overall_points', 0),
 			'overall_rank': entry.get('summary_overall_rank', 0),
-			'event_points': entry.get('summary_event_points', 0),
-			'current_gameweek': current_gameweek,
+			'event_points': event_points,
+			'current_gameweek': target_gameweek,
+			'prev_gameweek': target_gameweek - 1 if target_gameweek > 1 else None,
+			'next_gameweek': target_gameweek + 1 if target_gameweek < latest_gameweek else None,
+			'is_latest_gameweek': target_gameweek == latest_gameweek,
 			'picks': team_picks,
 			'pitch_rows': pitch_rows,
 			'bench': bench,
 			'active_chip': _chip_label(picks.get('active_chip')),
+			'captain_name': captain_name,
+			'event_rank': entry_history.get('rank'),
+			'event_transfers': entry_history.get('event_transfers', 0),
+			'event_transfers_cost': entry_history.get('event_transfers_cost', 0),
+			'points_on_bench': entry_history.get('points_on_bench', 0),
+			'bank': (entry_history.get('bank', 0) or 0) / 10,
+			'team_value': (entry_history.get('value', 0) or 0) / 10,
+			'average_score': target_event.get('average_entry_score'),
+			'highest_score': target_event.get('highest_score'),
 		}
 		return data, None
 	except error.HTTPError as exc:
@@ -1848,6 +1880,7 @@ def home(request):
 def live_gameweek(request):
 	entry_id_raw = request.GET.get('entry_id', '').strip()
 	player_id_raw = request.GET.get('player_id', '').strip()
+	gameweek_raw = request.GET.get('gameweek', '').strip()
 	if not entry_id_raw:
 		entry_id_raw = str(request.session.get('fpl_entry_id', '')).strip()
 	base_context = _base_page_context('live_gameweek')
@@ -1873,7 +1906,8 @@ def live_gameweek(request):
 			context['entry_history'] = entry_history
 			context['entry_history_error'] = entry_history_error
 
-			live_data, error_message = _fetch_fpl_live_data(int(entry_id_raw))
+			requested_gameweek = int(gameweek_raw) if gameweek_raw.isdigit() else None
+			live_data, error_message = _fetch_fpl_live_data(int(entry_id_raw), requested_gameweek)
 			context['live_data'] = live_data
 			context['error_message'] = error_message
 			if live_data:
