@@ -109,6 +109,45 @@
                     </table>
                 </div>
             </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Gameweek History</h4>
+                    <span>Points by gameweek</span>
+                </header>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                {% for gw in gameweek_history_ids %}
+                                <th>GW{{ gw }}</th>
+                                {% endfor %}
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in gameweek_history_rows %}
+                            <tr>
+                                <td>#{{ row.rank }}</td>
+                                <td>{{ row.manager_name }}</td>
+                                <td>{{ row.team_name }}</td>
+                                {% for pts in row.points_row %}
+                                <td>{{ pts|default_if_none:'-' }}</td>
+                                {% endfor %}
+                                <td><strong>{{ row.total_points }}</strong></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">No finished gameweeks yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </main>
     </div>
 </div>

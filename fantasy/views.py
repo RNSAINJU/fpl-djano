@@ -1544,6 +1544,58 @@ def _build_classic_data(rows: list[dict]) -> dict:
 	}
 
 
+def _fetch_gameweek_history(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> dict:
+	"""Every league member's points for every FINISHED gameweek, side by
+	side. Deliberately DB-only - CaptainGameweekScore is only ever written
+	for a gameweek once it's finished (populated by sync_fpl_data every 15
+	minutes), so this never makes a live FPL API call and stays cheap
+	enough to compute synchronously in the page view, unlike the
+	league-wide leaderboards that need a live per-manager fetch for
+	whichever gameweek is still in progress. Names/teams come from the
+	league's current (cached) roster rather than whatever was stored on
+	each CaptainGameweekScore row, so they stay in sync with the rest of
+	the site even after a manager renames their team mid-season."""
+	entry_rows, using_new_entries, _league_name = _fetch_league_roster(league_id)
+
+	managers: dict[int, dict] = {}
+	for item in entry_rows:
+		entry_id = item.get('entry')
+		if not entry_id:
+			continue
+		if using_new_entries:
+			manager_name = f"{item.get('player_first_name', '')} {item.get('player_last_name', '')}".strip() or 'New Manager'
+		else:
+			manager_name = item.get('player_name', '').strip() or 'Unknown Manager'
+		managers[entry_id] = {
+			'entry_id': entry_id,
+			'manager_name': manager_name,
+			'team_name': item.get('entry_name', 'Unknown Team'),
+			'points_by_gameweek': {},
+			'total_points': 0,
+		}
+
+	score_rows = CaptainGameweekScore.objects.filter(entry_id__in=managers.keys()).values(
+		'entry_id', 'gameweek', 'gameweek_points'
+	)
+	gameweek_ids = sorted({row['gameweek'] for row in score_rows})
+	for row in score_rows:
+		manager = managers.get(row['entry_id'])
+		if manager:
+			manager['points_by_gameweek'][row['gameweek']] = row['gameweek_points']
+			manager['total_points'] += row['gameweek_points']
+
+	history_rows = list(managers.values())
+	history_rows.sort(key=lambda row: row['total_points'], reverse=True)
+	for row in history_rows:
+		row['rank'] = 1 + sum(1 for other in history_rows if other['total_points'] > row['total_points'])
+		row['points_row'] = [row['points_by_gameweek'].get(gw) for gw in gameweek_ids]
+
+	return {
+		'gameweek_history_ids': gameweek_ids,
+		'gameweek_history_rows': history_rows,
+	}
+
+
 def _fetch_manager_achievements(entry_id: int) -> dict:
 	return cache.get_or_set(
 		f'fpl:manager_achievements:{entry_id}',
@@ -1944,6 +1996,10 @@ def classic_league(request):
 		'page_ad': _page_ad(PageAdvertisement.Page.CLASSIC_LEAGUE),
 		'season_finished': season_finished,
 		'classic_season_winner': classic_season_winner,
+		# DB-only (see _fetch_gameweek_history's docstring) so unlike the
+		# league table above, this is safe to compute synchronously here
+		# rather than async-loading it too.
+		**_fetch_gameweek_history(),
 	}
 	return render(request, 'fantasy/classic_league.html', context)
 
