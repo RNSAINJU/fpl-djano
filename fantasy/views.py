@@ -483,10 +483,11 @@ def _fetch_dashboard_data_live() -> dict:
 			reverse=True,
 		)
 		top_players = []
-		for element in sorted_by_selected[:5]:
+		for rank, element in enumerate(sorted_by_selected[:5], start=1):
 			team = team_lookup.get(element.get('team'), {})
 			top_players.append(
 				{
+					'rank': rank,
 					'name': element.get('web_name', 'Unknown'),
 					'team_short_name': team.get('short_name', '-'),
 					'position_label': position_lookup.get(element.get('element_type'), '-'),
@@ -607,6 +608,91 @@ def _fetch_dashboard_data_live() -> dict:
 					}
 				)
 
+		# Top Picks for the upcoming gameweek: FPL's own "expected points
+		# next gameweek" (ep_next), among players actually available to
+		# play, with each one's next fixture opponent for context.
+		next_gameweek = next_event.get('id') if next_event else target_gameweek
+		team_next_fixture: dict[int, dict] = {}
+		for fixture in sorted(
+			[row for row in fixture_rows if row.get('kickoff_time') and not row.get('finished')],
+			key=lambda row: row.get('kickoff_time'),
+		):
+			home_id = fixture.get('team_h')
+			away_id = fixture.get('team_a')
+			home_team = team_lookup.get(home_id, {})
+			away_team = team_lookup.get(away_id, {})
+			if home_id is not None and home_id not in team_next_fixture:
+				team_next_fixture[home_id] = {'opponent': away_team.get('short_name', '-'), 'is_home': True}
+			if away_id is not None and away_id not in team_next_fixture:
+				team_next_fixture[away_id] = {'opponent': home_team.get('short_name', '-'), 'is_home': False}
+
+		top_picks_next_gw = []
+		available_elements = [element for element in elements if element.get('status') == 'a']
+		for element in sorted(available_elements, key=lambda row: _to_float(row.get('ep_next')), reverse=True)[:4]:
+			team = team_lookup.get(element.get('team'), {})
+			top_picks_next_gw.append(
+				{
+					'name': element.get('web_name', 'Unknown'),
+					'team_short_name': team.get('short_name', '-'),
+					'position_label': position_lookup.get(element.get('element_type'), '-'),
+					'price': _to_int(element.get('now_cost')) / 10,
+					'expected_points': element.get('ep_next', '0.0'),
+					'photo_url': _photo_url_from_code(element.get('code')),
+					'shirt_url': _shirt_url_from_code(team.get('code')),
+					'next_fixture': team_next_fixture.get(element.get('team')),
+				}
+			)
+
+		# Team of the Week: FPL's own official dream-team (top-scoring XI
+		# in the real matches) for the most recently finished gameweek.
+		finished_gameweeks_sorted = sorted(
+			(event['id'] for event in events if event.get('finished')), reverse=True
+		)
+		team_of_the_week = []
+		team_of_the_week_gameweek = finished_gameweeks_sorted[0] if finished_gameweeks_sorted else None
+		if team_of_the_week_gameweek:
+			try:
+				dream_team_payload = _get_json(
+					f'https://fantasy.premierleague.com/api/dream-team/{team_of_the_week_gameweek}/'
+				)
+			except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+				dream_team_payload = {}
+			element_lookup = {element['id']: element for element in elements}
+			for pick in dream_team_payload.get('team', []):
+				element = element_lookup.get(pick.get('element'))
+				if not element:
+					continue
+				team = team_lookup.get(element.get('team'), {})
+				team_of_the_week.append(
+					{
+						'name': element.get('web_name', 'Unknown'),
+						'team_short_name': team.get('short_name', '-'),
+						'points': pick.get('points', 0),
+						'photo_url': _photo_url_from_code(element.get('code')),
+						'shirt_url': _shirt_url_from_code(team.get('code')),
+					}
+				)
+
+		# Injuries & Suspensions: any player FPL itself has flagged as not
+		# fully available, with their own news blurb - most recent first.
+		status_labels = {'i': 'Injured', 's': 'Suspended', 'd': 'Doubtful', 'u': 'Unavailable', 'n': 'Not available'}
+		flagged_elements = [element for element in elements if element.get('status') != 'a' and element.get('news')]
+		flagged_elements.sort(key=lambda row: row.get('news_added') or '', reverse=True)
+		injuries = []
+		for element in flagged_elements[:4]:
+			team = team_lookup.get(element.get('team'), {})
+			injuries.append(
+				{
+					'name': element.get('web_name', 'Unknown'),
+					'team_short_name': team.get('short_name', '-'),
+					'status_label': status_labels.get(element.get('status'), 'Unavailable'),
+					'status_code': element.get('status'),
+					'news': element.get('news', ''),
+					'photo_url': _photo_url_from_code(element.get('code')),
+					'shirt_url': _shirt_url_from_code(team.get('code')),
+				}
+			)
+
 		return {
 			'top_players': top_players,
 			'top_scorer': top_scorer,
@@ -617,6 +703,11 @@ def _fetch_dashboard_data_live() -> dict:
 			'live_fixtures_label': f"GW {target_gameweek}" if target_gameweek else 'Upcoming',
 			'teams_count': len(teams),
 			'players_count': len(elements),
+			'top_picks_next_gw': top_picks_next_gw,
+			'next_gameweek': next_gameweek,
+			'team_of_the_week': team_of_the_week,
+			'team_of_the_week_gameweek': team_of_the_week_gameweek,
+			'injuries': injuries,
 		}
 	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
 		return {
@@ -629,6 +720,11 @@ def _fetch_dashboard_data_live() -> dict:
 			'live_fixtures_label': 'Upcoming',
 			'teams_count': 0,
 			'players_count': 0,
+			'top_picks_next_gw': [],
+			'next_gameweek': None,
+			'team_of_the_week': [],
+			'team_of_the_week_gameweek': None,
+			'injuries': [],
 		}
 
 

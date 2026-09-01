@@ -17,6 +17,22 @@ window.handlePlayerPhotoError = function handlePlayerPhotoError(img, shirtUrl) {
     }
 };
 
+// Shared player-photo markup (headshot -> team jersey -> initial letter),
+// built once and reused by every dashboard card that shows a player -
+// keeps that same 3-step fallback chain consistent everywhere instead of
+// each section rebuilding it slightly differently.
+window.buildPlayerAvatar = function buildPlayerAvatar(name, photoUrl, shirtUrl, className) {
+    const initial = (name || '-').slice(0, 1);
+    const fallback = `<span class="${className} ${className}--fallback" style="display:none;">${initial}</span>`;
+    if (photoUrl) {
+        return `<img class="${className}" src="${photoUrl}" alt="${name}" onerror="window.handlePlayerPhotoError(this, '${shirtUrl || ''}')">${fallback}`;
+    }
+    if (shirtUrl) {
+        return `<img class="${className} is-shirt-fallback" src="${shirtUrl}" alt="${name}" onerror="window.handlePlayerPhotoError(this, '')">${fallback}`;
+    }
+    return `<span class="${className} ${className}--fallback">${initial}</span>`;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const items = document.querySelectorAll('.reveal');
     items.forEach((item, index) => {
@@ -525,36 +541,99 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const topPicksRows = document.querySelector('[data-home-top-picks-rows]');
-            if (topPicksRows) {
+            const ownedGrid = document.querySelector('[data-home-top-picks-rows]');
+            if (ownedGrid) {
                 const players = dashboard.top_players || [];
-                topPicksRows.innerHTML = players.length
+                ownedGrid.innerHTML = players.length
                     ? players
+                        .map(
+                            (player) => `
+                            <div class="owned-card">
+                                <span class="owned-card__rank">#${player.rank}</span>
+                                <div class="owned-card__media">${window.buildPlayerAvatar(player.name, player.photo_url, player.shirt_url, 'owned-card__photo')}</div>
+                                <div class="owned-card__text">
+                                    <strong>${player.name}</strong>
+                                    <span>${player.team_short_name}</span>
+                                </div>
+                                <div class="owned-card__percent">
+                                    <strong>${player.selected_by_percent}%</strong>
+                                    <span>Selected</span>
+                                </div>
+                            </div>
+                        `
+                        )
+                        .join('')
+                    : '<p class="chip-history__empty">No player data available right now.</p>';
+            }
+
+            const nextGwLabel = document.querySelector('[data-home-next-gw]');
+            if (nextGwLabel && dashboard.next_gameweek) {
+                nextGwLabel.textContent = dashboard.next_gameweek;
+            }
+
+            const picksNextGrid = document.querySelector('[data-home-top-picks-next]');
+            if (picksNextGrid) {
+                const picks = dashboard.top_picks_next_gw || [];
+                picksNextGrid.innerHTML = picks.length
+                    ? picks
                         .map((player) => {
-                            const initial = (player.name || '-').slice(0, 1);
-                            const shirtUrl = player.shirt_url || '';
-                            const avatar = player.photo_url
-                                ? `<img class="top-picks-avatar" src="${player.photo_url}" alt="${player.name}" onerror="window.handlePlayerPhotoError(this, '${shirtUrl}')"><span class="top-picks-avatar top-picks-avatar--fallback" style="display:none;">${initial}</span>`
-                                : shirtUrl
-                                    ? `<img class="top-picks-avatar is-shirt-fallback" src="${shirtUrl}" alt="${player.name}" onerror="window.handlePlayerPhotoError(this, '')"><span class="top-picks-avatar top-picks-avatar--fallback" style="display:none;">${initial}</span>`
-                                    : `<span class="top-picks-avatar top-picks-avatar--fallback">${initial}</span>`;
+                            const fixture = player.next_fixture;
+                            const fixtureLabel = fixture ? `${fixture.opponent} (${fixture.is_home ? 'H' : 'A'})` : 'TBC';
                             return `
-                            <tr>
-                                <td>
-                                    <div class="top-picks-player">
-                                        ${avatar}
-                                        <span>${player.name} <small>${player.team_short_name}</small></span>
-                                    </div>
-                                </td>
-                                <td>${player.position_label}</td>
-                                <td>${player.price}</td>
-                                <td>${player.total_points}</td>
-                                <td>${player.selected_by_percent}%</td>
-                            </tr>
+                            <div class="pick-card">
+                                <div class="pick-card__media">${window.buildPlayerAvatar(player.name, player.photo_url, player.shirt_url, 'pick-card__photo')}</div>
+                                <span class="pick-card__points">${player.expected_points} pts</span>
+                                <strong class="pick-card__name">${player.name}</strong>
+                                <span class="pick-card__meta">${player.position_label} &middot; ${player.team_short_name} &middot; &pound;${player.price}m</span>
+                                <span class="pick-card__fixture">${fixtureLabel}</span>
+                            </div>
                         `;
                         })
                         .join('')
-                    : '<tr><td colspan="5">No player data available right now.</td></tr>';
+                    : '<p class="chip-history__empty">No pick data available right now.</p>';
+            }
+
+            const totwLabel = document.querySelector('[data-home-totw-label]');
+            if (totwLabel) {
+                totwLabel.textContent = dashboard.team_of_the_week_gameweek ? `GW ${dashboard.team_of_the_week_gameweek}` : '';
+            }
+
+            const totwRow = document.querySelector('[data-home-totw-row]');
+            if (totwRow) {
+                const totw = dashboard.team_of_the_week || [];
+                totwRow.innerHTML = totw.length
+                    ? totw
+                        .map(
+                            (player) => `
+                            <div class="totw-player">
+                                ${window.buildPlayerAvatar(player.name, player.photo_url, player.shirt_url, 'totw-player__photo')}
+                                <span class="totw-player__name">${player.name}</span>
+                                <span class="totw-player__points">${player.points} pts</span>
+                            </div>
+                        `
+                        )
+                        .join('')
+                    : '<p>No Team of the Week data available yet.</p>';
+            }
+
+            const injuriesList = document.querySelector('[data-home-injuries-list]');
+            if (injuriesList) {
+                const injuries = dashboard.injuries || [];
+                injuriesList.innerHTML = injuries.length
+                    ? injuries
+                        .map(
+                            (player) => `
+                            <li class="injury-item">
+                                ${window.buildPlayerAvatar(player.name, player.photo_url, player.shirt_url, 'injury-item__photo')}
+                                <div>
+                                    <p><strong>${player.name}</strong> <span class="status-pill status-pill--${player.status_code || 'u'}">${player.status_label}</span></p>
+                                    <small>${player.news}</small>
+                                </div>
+                            </li>
+                        `
+                        )
+                        .join('')
+                    : '<li><div><p>No injury or suspension news right now.</p></div></li>';
             }
 
             const fixturesList = document.querySelector('[data-home-fixtures-list]');

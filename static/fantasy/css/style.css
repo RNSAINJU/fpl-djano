@@ -1659,6 +1659,352 @@ td small {
     color: #1c5f9e;
 }
 
+/* FPL's own player-status codes, used on the Injuries & Suspensions card. */
+.status-pill--i {
+    background: rgba(215, 71, 71, 0.16);
+    color: var(--danger);
+}
+
+.status-pill--s {
+    background: rgba(19, 18, 37, 0.12);
+    color: #131225;
+}
+
+.status-pill--d {
+    background: rgba(217, 164, 6, 0.18);
+    color: #8a6a04;
+}
+
+.status-pill--u,
+.status-pill--n {
+    background: rgba(127, 120, 151, 0.16);
+    color: #5d5792;
+}
+
+/* Most Selected Players */
+.owned-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.owned-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid var(--outline);
+    background: linear-gradient(135deg, #f5f0fb 0%, #fdfdff 70%);
+}
+
+.owned-card__rank {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+}
+
+.owned-card__media {
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+.owned-card__photo,
+.owned-card__photo--fallback {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(55, 0, 60, 0.08);
+}
+
+.owned-card__photo--fallback {
+    display: grid;
+    place-items: center;
+    color: var(--brand);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+}
+
+.owned-card__photo.is-shirt-fallback {
+    object-fit: contain;
+    padding: 6px;
+    box-sizing: border-box;
+}
+
+.owned-card__text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.owned-card__text strong {
+    font-size: 14px;
+    color: var(--text-dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.owned-card__text span {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.owned-card__percent {
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.owned-card__percent strong {
+    display: block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    color: var(--brand);
+    white-space: nowrap;
+}
+
+.owned-card__percent span {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* Top Picks for the upcoming gameweek */
+.picks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.pick-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    padding: 16px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--outline);
+    background: var(--surface-soft);
+}
+
+.pick-card__media {
+    margin-bottom: 2px;
+}
+
+.pick-card__photo,
+.pick-card__photo--fallback {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    object-fit: cover;
+    background: rgba(55, 0, 60, 0.08);
+}
+
+.pick-card__photo--fallback {
+    display: grid;
+    place-items: center;
+    color: var(--brand);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+}
+
+.pick-card__photo.is-shirt-fallback {
+    object-fit: contain;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.pick-card__points {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(0, 255, 135, 0.18);
+    color: #00512c;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.pick-card__name {
+    font-size: 14px;
+    color: var(--text-dark);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pick-card__meta {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.pick-card__fixture {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(55, 0, 60, 0.06);
+    color: var(--brand);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Team of the Week */
+.totw-row {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.totw-player {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 76px;
+}
+
+.totw-player__photo,
+.totw-player__photo--fallback {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.totw-player__photo--fallback {
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+}
+
+.totw-player__photo.is-shirt-fallback {
+    object-fit: contain;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.totw-player__name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.totw-player__points {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0, 255, 135, 0.22);
+    color: #04231a;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* Injuries & Suspensions */
+.injuries-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.injury-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #eee7fa;
+    border-radius: 12px;
+    padding: 10px;
+    background: var(--surface-soft);
+}
+
+.injury-item__photo,
+.injury-item__photo--fallback {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(55, 0, 60, 0.08);
+}
+
+.injury-item__photo--fallback {
+    display: grid;
+    place-items: center;
+    color: var(--brand);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.injury-item__photo.is-shirt-fallback {
+    object-fit: contain;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+.injury-item p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.injury-item small {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+@media (max-width: 620px) {
+    .owned-grid,
+    .picks-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .owned-card__photo,
+    .owned-card__photo--fallback {
+        width: 44px;
+        height: 44px;
+    }
+
+    .pick-card__photo,
+    .pick-card__photo--fallback {
+        width: 48px;
+        height: 48px;
+    }
+
+    .totw-player {
+        width: 64px;
+    }
+
+    .totw-player__photo,
+    .totw-player__photo--fallback {
+        width: 46px;
+        height: 46px;
+    }
+}
+
 .reveal {
     opacity: 0;
     transform: translateY(12px);

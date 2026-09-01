@@ -150,32 +150,46 @@
                 </div>
             </section>
 
-            <section class="insight-grid">
-                <article class="card reveal" id="top-picks">
-                    <header class="card-header">
-                        <h4>Top Picks</h4>
-                        <span>Most selected assets</span>
-                    </header>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Player</th>
-                                    <th>Pos</th>
-                                    <th>Price</th>
-                                    <th>Pts</th>
-                                    <th>Selected</th>
-                                </tr>
-                            </thead>
-                            <tbody data-home-top-picks-rows>
-                                <tr>
-                                    <td colspan="5">Loading player data…</td>
-                                </tr>
-                            </tbody>
-                        </table>
+            <section class="card reveal" id="top-picks">
+                <header class="card-header">
+                    <div class="section-heading">
+                        <p class="section-heading__kicker">Ownership</p>
+                        <h4>Most Selected Players</h4>
                     </div>
-                </article>
+                    <span>Overall FPL ownership</span>
+                </header>
+                <div class="owned-grid" data-home-top-picks-rows>
+                    <p class="chip-history__empty">Loading player data&hellip;</p>
+                </div>
+            </section>
 
+            <section class="card reveal" id="top-picks-next">
+                <header class="card-header">
+                    <div class="section-heading">
+                        <p class="section-heading__kicker">Upcoming Gameweek</p>
+                        <h4>Top Picks for GW<span data-home-next-gw>&ndash;</span></h4>
+                    </div>
+                    <span>Expected points</span>
+                </header>
+                <div class="picks-grid" data-home-top-picks-next>
+                    <p class="chip-history__empty">Loading&hellip;</p>
+                </div>
+            </section>
+
+            <section class="live-fixtures-board reveal" id="team-of-the-week">
+                <div class="live-fixtures-head">
+                    <div>
+                        <p class="section-heading__kicker" style="color: #cab9ef;">Completed Gameweek</p>
+                        <h4>Team of the Week</h4>
+                    </div>
+                    <span data-home-totw-label>&nbsp;</span>
+                </div>
+                <div class="totw-row" data-home-totw-row>
+                    <p>Loading&hellip;</p>
+                </div>
+            </section>
+
+            <section class="insight-grid">
                 <article class="card reveal" id="fixtures">
                     <header class="card-header">
                         <h4>Upcoming Fixtures</h4>
@@ -185,6 +199,22 @@
                         <li>
                             <div>
                                 <p>Loading fixtures…</p>
+                            </div>
+                        </li>
+                    </ul>
+                </article>
+
+                <article class="card reveal" id="injuries">
+                    <header class="card-header">
+                        <div class="section-heading">
+                            <p class="section-heading__kicker">Availability</p>
+                            <h4>Injuries &amp; Suspensions</h4>
+                        </div>
+                    </header>
+                    <ul class="injuries-list" data-home-injuries-list>
+                        <li>
+                            <div>
+                                <p>Loading&hellip;</p>
                             </div>
                         </li>
                     </ul>
