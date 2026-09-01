@@ -966,6 +966,54 @@ body {
     color: #fff !important;
 }
 
+/* Live Fixtures gets a lighter variant of the shared dark
+   .live-fixtures-board look - same layout/markup as the dark board, but
+   white card surfaces with brand-purple/green accents instead of
+   white-on-dark, to match the site's lighter card sections (.card,
+   League Table, banner ad). Scoped to #live-fixtures so the Team of the
+   Week section below - which reuses .live-fixtures-board/.live-fixtures-head
+   as-is - keeps its original dark styling. */
+#live-fixtures.live-fixtures-board {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    color: var(--text-dark);
+}
+
+#live-fixtures .live-fixtures-head h4 {
+    color: var(--brand);
+}
+
+#live-fixtures .live-fixtures-head span {
+    background: rgba(55, 0, 60, 0.08);
+    color: var(--brand);
+}
+
+#live-fixtures .live-fixture-card {
+    background: var(--surface-soft);
+    border: 1px solid var(--outline);
+}
+
+#live-fixtures .fixture-teams strong {
+    color: var(--text-dark);
+}
+
+#live-fixtures .fixture-teams span {
+    color: var(--text-muted);
+}
+
+#live-fixtures .fixture-status {
+    background: rgba(55, 0, 60, 0.08);
+    color: var(--brand);
+}
+
+#live-fixtures .live-fixture-card p {
+    color: var(--text-muted);
+}
+
+#live-fixtures .fixture-score {
+    color: var(--text-dark) !important;
+}
+
 .card-header {
     margin-bottom: 12px;
     display: flex;
