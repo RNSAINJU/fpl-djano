@@ -87,6 +87,7 @@ heredocs. The only reliable workflow is:
 | Horizontal-scroll player row on dark board | `.totw-row`/`.totw-player`, same dark-board wrapper as `.live-fixtures-board` | Home dashboard (Team of the Week) |
 | Availability/news list | `.injuries-list`/`.injury-item` + `.status-pill--i/s/d/u/n` (keyed by FPL's own player `status` code) | Home dashboard (Injuries & Suspensions) |
 | Ad banner (logo + league name + per-page ad) | `_league_banner.html` include | Captain Mode, Classic League, Gameweek Winners, Manager of the Month |
+| "Your Team" topbar chip | `.topteam-chip` - reads `saved_team` (from `fantasy.context_processors.saved_team`, registered in `settings.py`'s `TEMPLATES`), which resolves the session's `fpl_entry_id` (set by `live_gameweek`) into a lightweight `{entry_id, team_name, manager_name, initials}` via `_fetch_saved_team_summary()` | Every page's topbar - `{% if saved_team %}` block sits between `<h2>FPL Bhaktapur</h2>` and that page's own `.topbar-button`, identically on all 9 templates |
 
 Brand palette (both public site and admin): deep purple `#37003c`
 (`--brand`), signature green `#00ff87` (`--brand-bright`) — green is
