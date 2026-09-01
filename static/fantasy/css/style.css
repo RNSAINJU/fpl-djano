@@ -2234,73 +2234,7 @@ td small {
     transition: opacity 0.25s ease;
 }
 
-/* Bottom tab bar - stands in for the sidebar below the 1020px drawer
-   breakpoint. All 8 sidebar links get a tab (see _bottom_nav.html) rather
-   than trimming down to a handful, so it scrolls horizontally instead of
-   wrapping; z-index sits above the topbar but below .sidebar-overlay (15)
-   so opening the drawer dims it along with the rest of the page. */
-.bottom-nav {
-    display: none;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 12;
-    background: var(--brand);
-    border-top: 1px solid rgba(255, 255, 255, 0.14);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-    gap: 2px;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-}
-
-.bottom-nav::-webkit-scrollbar {
-    display: none;
-}
-
-.bottom-nav__item {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    min-width: 74px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 6px 4px;
-    border-radius: 12px;
-    color: rgba(255, 255, 255, 0.62);
-    text-decoration: none;
-    text-align: center;
-}
-
-.bottom-nav__icon {
-    font-size: 20px;
-    line-height: 1;
-}
-
-.bottom-nav__label {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04rem;
-    white-space: nowrap;
-}
-
-.bottom-nav__item.active {
-    color: var(--brand-bright);
-}
-
 @media (max-width: 1020px) {
-    .bottom-nav {
-        display: flex;
-    }
-
-    .main-content {
-        padding-bottom: 92px;
-    }
-
     .app-shell {
         grid-template-columns: 1fr;
     }
@@ -2363,7 +2297,7 @@ td small {
 
 @media (max-width: 620px) {
     .main-content {
-        padding: 12px 12px 88px;
+        padding: 12px;
         gap: 14px;
     }
 
