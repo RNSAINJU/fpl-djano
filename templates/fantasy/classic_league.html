@@ -21,6 +21,7 @@
             <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
             <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
             <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
+            <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:gameweekhistory' %}">Gameweek History</a>
             <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:past_seasons' %}">Past Seasons</a>
         </nav>
     </aside>
@@ -110,53 +111,7 @@
                 </div>
             </section>
 
-            <section class="card reveal">
-                <header class="card-header">
-                    <h4>Gameweek History</h4>
-                    <span>Points and captain picks by gameweek</span>
-                </header>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Manager</th>
-                                <th>Team</th>
-                                {% for gw in gameweek_history_ids %}
-                                <th>GW{{ gw }}</th>
-                                {% endfor %}
-                                <th>Total</th>
-                                <th>Captain Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in gameweek_history_rows %}
-                            <tr>
-                                <td>#{{ row.rank }}</td>
-                                <td>{{ row.manager_name }}</td>
-                                <td>{{ row.team_name }}</td>
-                                {% for gw_data in row.points_row %}
-                                <td>
-                                    {% if gw_data %}
-                                    {{ gw_data.points }}<br>
-                                    <small>C: {{ gw_data.captain_name|default:'-' }} ({{ gw_data.captain_points }})</small>
-                                    {% else %}
-                                    -
-                                    {% endif %}
-                                </td>
-                                {% endfor %}
-                                <td><strong>{{ row.total_points }}</strong></td>
-                                <td>{{ row.total_captain_points }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5">No finished gameweeks yet.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+            
         </main>
     </div>
 </div>

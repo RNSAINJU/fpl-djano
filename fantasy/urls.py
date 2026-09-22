@@ -11,6 +11,7 @@ from .views import (
     past_seasons,
     prizes,
     season_detail,
+    gameweekhistory
 )
 
 app_name = 'fantasy'
@@ -23,6 +24,7 @@ urlpatterns = [
     path('manager-of-the-month/', manager_of_the_month, name='manager_of_the_month'),
     path('classic-league/', classic_league, name='classic_league'),
     path('prizes/', prizes, name='prizes'),
+    path('gameweekhistory/', gameweekhistory, name='gameweekhistory'),
     path('past-seasons/', past_seasons, name='past_seasons'),
     path('past-seasons/<int:season_id>/', season_detail, name='season_detail'),
     path('api/league-live-data/', league_live_data, name='league_live_data'),

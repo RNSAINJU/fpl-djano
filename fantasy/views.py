@@ -2052,6 +2052,35 @@ def classic_league(request):
 	}
 	return render(request, 'fantasy/classic_league.html', context)
 
+def gameweekhistory(request):
+	# Rendered empty and filled in by JS right after load, same pattern as
+	# Captain Mode/Gameweek Winners/Manager of the Month - the standings
+	# fetch now includes a live per-manager fan-out for the in-progress
+	# gameweek (see _fetch_fpl_league_entries_live), so it's no longer
+	# cheap enough to compute synchronously on every page load.
+	base_context = _base_page_context('gameweekhistory')
+	season_finished = _is_season_finished()
+	classic_season_winner = None
+	if season_finished:
+		rows, _league_name, _league_error, _league_source = _resolved_league_dataset()
+		classic_rows_sync = _build_classic_data(rows).get('classic_rows') or []
+		classic_season_winner = classic_rows_sync[0] if classic_rows_sync else None
+	context = {
+		**base_context,
+		'leader_points': 0,
+		'classic_rows': [],
+		'league_name': '',
+		'league_error': None,
+		'league_source': None,
+		'page_ad': _page_ad(PageAdvertisement.Page.CLASSIC_LEAGUE),
+		'season_finished': season_finished,
+		'classic_season_winner': classic_season_winner,
+		# DB-only (see _fetch_gameweek_history's docstring) so unlike the
+		# league table above, this is safe to compute synchronously here
+		# rather than async-loading it too.
+		**_fetch_gameweek_history(),
+	}
+	return render(request, 'fantasy/gameweekhistory.html', context)
 
 def league_live_data(request):
 	"""Backs every page's table data - both the initial "fetch right after
