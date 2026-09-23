@@ -978,6 +978,7 @@ def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tu
 				'team_name': item.get('entry_name', 'Unknown Team'),
 				'total_points': 0,
 				'gameweek_points': 0,
+				'hits': 0,
 			}
 
 		if not using_new_entries:
@@ -995,11 +996,17 @@ def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tu
 			stored_totals = (
 				CaptainGameweekScore.objects.filter(entry_id__in=managers.keys())
 				.values('entry_id')
-				.annotate(total=Sum('gameweek_points'))
+				.annotate(
+					total=Sum(
+            			F('gameweek_points') - F('event_transfers_cost')
+					),
+        			hits=Sum('event_transfers_cost'),
+				)
 			)
 			for row in stored_totals:
 				if row['entry_id'] in managers:
 					managers[row['entry_id']]['total_points'] = row['total'] or 0
+        			managers[row['entry_id']]['hits'] = row['hits'] or 0
 
 			latest_finished_gameweek = CaptainGameweekScore.objects.filter(
 				entry_id__in=managers.keys()
@@ -1029,9 +1036,10 @@ def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tu
 					for future in as_completed(futures):
 						result = future.result()
 						if result:
-							entry_id, points = result
+							entry_id, points, hits  = result
 							managers[entry_id]['gameweek_points'] = points
 							managers[entry_id]['total_points'] += points
+							managers[entry_id]['hits'] += hits
 
 		entries = list(managers.values())
 		if using_new_entries:
@@ -1520,7 +1528,7 @@ def _fetch_monthly_leaderboard_live(
 			row['rank'] = index
 
 		return {
-			'monthly_rankings': leaderboard[:25],
+			'monthly_rankings': leaderboard,
 			# Full, untruncated list - kept separate from the display-only
 			# top 25 above so a single manager's own rank can still be
 			# looked up (e.g. for their live-tracker "current standing")
@@ -1565,6 +1573,7 @@ def _build_classic_data(rows: list[dict]) -> dict:
 				'manager_name': row['manager_name'],
 				'team_name': row['team_name'],
 				'total_points': row['total_points'],
+				'hits': row.get('hits', 0),
 				'form': form,
 				'form_emoji': form_emoji,
 			}

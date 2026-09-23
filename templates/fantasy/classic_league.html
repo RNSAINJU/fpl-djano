@@ -84,6 +84,7 @@
                                 <th>Rank</th>
                                 <th>Manager</th>
                                 <th>Team</th>
+                                <th>Hits</th>
                                 <th>Total Points</th>
                                 <th>Form</th>
                             </tr>
@@ -94,6 +95,13 @@
                                 <td>#{{ row.rank }}</td>
                                 <td>{{ row.manager_name }}</td>
                                 <td>{{ row.team_name }}</td>
+                                <td>
+                                {% if row.hits %}
+                                 -{{ row.hits }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                                </td>
                                 <td>{{ row.total_points }}</td>
                                 <td>
                                     <span class="status-pill {% if row.form == 'On Fire' %}status-pill--fire{% elif row.form == 'Hot' %}status-pill--hot{% elif row.form == 'Steady' %}status-pill--steady{% elif row.form == 'Cooling' %}status-pill--cooling{% else %}status-pill--cold{% endif %}">
