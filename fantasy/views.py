@@ -1520,11 +1520,11 @@ def _fetch_monthly_leaderboard_live(
 			row['rank'] = index
 
 		return {
-			'monthly_rankings': leaderboard[:15],
+			'monthly_rankings': leaderboard[:25],
 			# Full, untruncated list - kept separate from the display-only
-			# top 15 above so a single manager's own rank can still be
+			# top 25 above so a single manager's own rank can still be
 			# looked up (e.g. for their live-tracker "current standing")
-			# even when it's outside the top 15 shown on the page itself.
+			# even when it's outside the top 25 shown on the page itself.
 			'all_rankings': leaderboard,
 			'monthly_winner': leaderboard[0] if leaderboard else None,
 			'available_months': [{'value': m, 'label': _month_label(m)} for m in available_months],
