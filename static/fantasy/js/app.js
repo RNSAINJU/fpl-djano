@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const rows = data.entries || [];
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="5">No entries available yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6">No entries available yet.</td></tr>';
                 return;
             }
 
@@ -351,6 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>#${row.rank}</td>
                         <td>${row.manager_name}</td>
                         <td>${row.team_name}</td>
+                        <td>${row.hits ? `-${row.hits}` : '0'}</td>
                         <td>${row.gameweek_points}</td>
                         <td>${row.total_points}</td>
                     </tr>

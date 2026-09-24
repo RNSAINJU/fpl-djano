@@ -97,6 +97,7 @@
                                 <th>Rank</th>
                                 <th>Manager</th>
                                 <th>Team</th>
+                                <th>Hits</th>
                                 <th>GW Points</th>
                                 <th>Total Points</th>
                             </tr>
@@ -107,12 +108,13 @@
                                 <td>#{{ entry.rank }}</td>
                                 <td>{{ entry.manager_name }}</td>
                                 <td>{{ entry.team_name }}</td>
+                                <td>{{ entry.hits }}</td>
                                 <td>{{ entry.gameweek_points }}</td>
                                 <td>{{ entry.total_points }}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5">Loading gameweek standings…</td>
+                                <td colspan="6">Loading gameweek standings…</td>
                             </tr>
                             {% endfor %}
                         </tbody>
