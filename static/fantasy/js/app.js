@@ -247,25 +247,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tr>
                             <td>#${row.rank}</td>
 
-                            <td>${row.manager_name}</td>
+                            <td>${row.manager_name || '-'}</td>
 
-                            <td>${row.team_name}</td>
+                            <td>${row.team_name || '-'}</td>
 
                             <td>
-                                ${
-                                    hits > 0
-                                        ? `<span class="hit-points">-${hits}</span>`
-                                        : '0'
-                                }
+                                ${Number(row.hits || 0) > 0
+                                    ? `-${Number(row.hits)}`
+                                    : '0'}
                             </td>
 
                             <td>
-                                <strong>${row.total_points}</strong>
+                                ${row.total_points || 0}
                             </td>
 
                             <td>
                                 <span class="status-pill ${formClass}">
-                                    ${row.form_emoji || ''} ${row.form || ''}
+                                    ${row.form_emoji || ''} ${row.form || 'Cold'}
                                 </span>
                             </td>
                         </tr>

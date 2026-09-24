@@ -4,150 +4,353 @@
 
 {% block content %}
 <div class="app-shell">
+
+    <!-- =========================
+         SIDEBAR
+    ========================== -->
     <aside class="sidebar" id="sidebar">
+
         <div class="brand-block">
-            <div class="brand-mark{% if site_logo_url %} brand-mark--logo{% endif %}">{% if site_logo_url %}<img src="{{ site_logo_url }}" alt="FPL Bhaktapur logo">{% else %}F{% endif %}</div>
+            <div class="brand-mark{% if site_logo_url %} brand-mark--logo{% endif %}">
+                {% if site_logo_url %}
+                    <img src="{{ site_logo_url }}" alt="FPL Bhaktapur logo">
+                {% else %}
+                    F
+                {% endif %}
+            </div>
+
             <div>
                 <h1>FPL Bhaktapur</h1>
             </div>
         </div>
+
         <nav class="sidebar-nav">
+
             <p class="nav-label">Main</p>
-            <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}#dashboard">Dashboard</a>
-            <a class="{% if active_page == 'prizes' %}active{% endif %}" href="{% url 'fantasy:prizes' %}">Prizes</a>
+
+            <a class="{% if active_page == 'home' %}active{% endif %}"
+               href="{% url 'fantasy:home' %}#dashboard">
+                Dashboard
+            </a>
+
+            <a class="{% if active_page == 'prizes' %}active{% endif %}"
+               href="{% url 'fantasy:prizes' %}">
+                Prizes
+            </a>
+
             <p class="nav-label">FPL Bhaktapur</p>
-            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
-            <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
-            <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
-            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
-            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
-            <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:gameweekhistory' %}">Gameweek History</a>
-            <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:past_seasons' %}">Past Seasons</a>
+
+            <a class="{% if active_page == 'live_gameweek' %}active{% endif %}"
+               href="{% url 'fantasy:live_gameweek' %}">
+                Live Tracker
+            </a>
+
+            <a class="{% if active_page == 'captain_mode' %}active{% endif %}"
+               href="{% url 'fantasy:captain_mode' %}">
+                Captain Mode
+            </a>
+
+            <a class="{% if active_page == 'classic_league' %}active{% endif %}"
+               href="{% url 'fantasy:classic_league' %}">
+                Classic League
+            </a>
+
+            <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}"
+               href="{% url 'fantasy:gameweek_winners' %}">
+                GW Winners
+            </a>
+
+            <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}"
+               href="{% url 'fantasy:manager_of_the_month' %}">
+                Manager of the Month
+            </a>
+
+            <a class="{% if active_page == 'past_seasons' %}active{% endif %}"
+               href="{% url 'fantasy:gameweekhistory' %}">
+                Gameweek History
+            </a>
+
+            <a class="{% if active_page == 'past_seasons' %}active{% endif %}"
+               href="{% url 'fantasy:past_seasons' %}">
+                Past Seasons
+            </a>
+
         </nav>
     </aside>
 
+
+    <!-- =========================
+         MAIN PANEL
+    ========================== -->
     <div class="main-panel">
+
+        <!-- TOPBAR -->
         <header class="topbar">
-            <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Toggle navigation">Menu</button>
+
+            <button
+                class="sidebar-toggle"
+                id="sidebar-toggle"
+                type="button"
+                aria-label="Toggle navigation">
+                Menu
+            </button>
+
             <h2>FPL Bhaktapur</h2>
+
             {% if saved_team %}
-            <a class="topteam-chip" href="{% url 'fantasy:live_gameweek' %}">
-                <span class="topteam-chip__avatar">{{ saved_team.initials }}</span>
-                <span class="topteam-chip__text"><strong>{{ saved_team.team_name }}</strong><small>View team</small></span>
+            <a class="topteam-chip"
+               href="{% url 'fantasy:live_gameweek' %}">
+
+                <span class="topteam-chip__avatar">
+                    {{ saved_team.initials }}
+                </span>
+
+                <span class="topteam-chip__text">
+                    <strong>{{ saved_team.team_name }}</strong>
+                    <small>View team</small>
+                </span>
+
             </a>
             {% endif %}
-            <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to dashboard</a>
+
+            <a class="topbar-button"
+               href="{% url 'fantasy:home' %}">
+                Back to dashboard
+            </a>
+
         </header>
 
-        <main id="main-content" class="main-content" data-league-page="classic" data-live-endpoint="{% url 'fantasy:league_live_data' %}">
+
+        <!-- =========================
+             MAIN CONTENT
+        ========================== -->
+        <main
+            id="main-content"
+            class="main-content"
+            data-league-page="classic"
+            data-live-endpoint="{% url 'fantasy:league_live_data' %}"
+        >
+
+            <!-- HERO -->
             <section class="team-hero reveal">
+
                 <div>
                     <p class="kicker">Core Competition</p>
                     <h3>Classic League</h3>
                 </div>
-                <span class="chip" data-classic-leader>Leader {{ leader_points }} pts</span>
+
+                <span
+                    class="chip"
+                    data-classic-leader
+                >
+                    Leader {{ leader_points }} pts
+                </span>
+
             </section>
 
+
+            <!-- =========================
+                 SEASON CHAMPION
+            ========================== -->
             <section class="winner-spotlight winner-spotlight--sealed reveal">
-                <div class="winner-spotlight__badge">🏆</div>
+
+                <div class="winner-spotlight__badge">
+                    🏆
+                </div>
+
                 <div class="winner-spotlight__body">
-                    <p class="winner-spotlight__label">Season Champion</p>
+
+                    <p class="winner-spotlight__label">
+                        Season Champion
+                    </p>
+
                     {% if season_finished and classic_season_winner %}
-                    <h3 class="winner-spotlight__name">{{ classic_season_winner.manager_name }}</h3>
-                    <p class="winner-spotlight__team">{{ classic_season_winner.team_name }}</p>
+
+                        <h3 class="winner-spotlight__name">
+                            {{ classic_season_winner.manager_name }}
+                        </h3>
+
+                        <p class="winner-spotlight__team">
+                            {{ classic_season_winner.team_name }}
+                        </p>
+
                     {% else %}
-                    <h3 class="winner-spotlight__name winner-spotlight__name--sealed">Winner announced at season end</h3>
+
+                        <h3 class="winner-spotlight__name winner-spotlight__name--sealed">
+                            Winner announced at season end
+                        </h3>
+
                     {% endif %}
+
                 </div>
+
+
                 <div class="winner-spotlight__score">
+
                     {% if season_finished and classic_season_winner %}
-                    <strong>{{ classic_season_winner.total_points }}</strong>
-                    <span>Total points</span>
+
+                        <strong>
+                            {{ classic_season_winner.total_points }}
+                        </strong>
+
+                        <span>
+                            Total points
+                        </span>
+
                     {% else %}
-                    <strong>🔒</strong>
-                    <span>Sealed until season ends</span>
+
+                        <strong>🔒</strong>
+
+                        <span>
+                            Sealed until season ends
+                        </span>
+
                     {% endif %}
+
                 </div>
+
             </section>
 
+
+            <!-- LEAGUE BANNER -->
             {% include 'fantasy/_league_banner.html' %}
 
-<section class="card reveal">
-    <header class="card-header">
-        <h4>League Table</h4>
-        <span>Overall standings</span>
-    </header>
 
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Manager</th>
-                    <th>Team</th>
-                    <th>Hits</th>
-                    <th>Total Points</th>
-                    <th>Form</th>
-                </tr>
-            </thead>
+            <!-- =========================
+                 CLASSIC LEAGUE TABLE
+            ========================== -->
+            <section class="card reveal">
 
-            <tbody data-classic-rows>
-                {% for row in classic_rows %}
-                <tr>
-                    <td>#{{ row.rank }}</td>
+                <header class="card-header">
 
-                    <td>{{ row.manager_name }}</td>
+                    <h4>
+                        League Table
+                    </h4>
 
-                    <td>{{ row.team_name }}</td>
+                    <span>
+                        Overall standings
+                    </span>
 
-                    <td>
-                        {% if row.hits %}
-                            <span class="hit-points">
-                                -{{ row.hits }}
-                            </span>
-                        {% else %}
-                            <span>0</span>
-                        {% endif %}
-                    </td>
+                </header>
 
-                    <td>
-                        <strong>{{ row.total_points }}</strong>
-                    </td>
 
-                    <td>
-                        <span class="status-pill
-                            {% if row.form == 'On Fire' %}
-                                status-pill--fire
-                            {% elif row.form == 'Hot' %}
-                                status-pill--hot
-                            {% elif row.form == 'Steady' %}
-                                status-pill--steady
-                            {% elif row.form == 'Cooling' %}
-                                status-pill--cooling
-                            {% else %}
-                                status-pill--cold
-                            {% endif %}
-                        ">
-                            {{ row.form_emoji }} {{ row.form }}
-                        </span>
-                    </td>
-                </tr>
+                <div class="table-wrap">
 
-                {% empty %}
+                    <table>
 
-                <tr>
-                    <td colspan="6">
-                        Loading league standings…
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
+                        <thead>
 
-            
+                            <tr>
+                                <th>Rank</th>
+                                <th>Manager</th>
+                                <th>Team</th>
+                                <th>Hits</th>
+                                <th>Total Points</th>
+                                <th>Form</th>
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody data-classic-rows>
+
+                            {% for row in classic_rows %}
+
+                            <tr>
+
+                                <!-- RANK -->
+                                <td>
+                                    #{{ row.rank }}
+                                </td>
+
+
+                                <!-- MANAGER -->
+                                <td>
+                                    {{ row.manager_name }}
+                                </td>
+
+
+                                <!-- TEAM -->
+                                <td>
+                                    {{ row.team_name }}
+                                </td>
+
+
+                                <!-- HITS -->
+                                <td>
+
+                                    {% if row.hits %}
+                                        <span class="hit-points">
+                                            -{{ row.hits }}
+                                        </span>
+                                    {% else %}
+                                        <span>
+                                            0
+                                        </span>
+                                    {% endif %}
+
+                                </td>
+
+
+                                <!-- TOTAL POINTS -->
+                                <td>
+
+                                    <strong>
+                                        {{ row.total_points }}
+                                    </strong>
+
+                                </td>
+
+
+                                <!-- FORM -->
+                                <td>
+
+                                    <span
+                                        class="status-pill
+                                        {% if row.form == 'On Fire' %}
+                                            status-pill--fire
+                                        {% elif row.form == 'Hot' %}
+                                            status-pill--hot
+                                        {% elif row.form == 'Steady' %}
+                                            status-pill--steady
+                                        {% elif row.form == 'Cooling' %}
+                                            status-pill--cooling
+                                        {% else %}
+                                            status-pill--cold
+                                        {% endif %}
+                                        "
+                                    >
+                                        {{ row.form_emoji }}
+                                        {{ row.form }}
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="6">
+                                    Loading league standings…
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
         </main>
+
     </div>
+
 </div>
 {% endblock %}
