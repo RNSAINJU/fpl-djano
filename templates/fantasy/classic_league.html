@@ -72,52 +72,79 @@
 
             {% include 'fantasy/_league_banner.html' %}
 
-            <section class="card reveal">
-                <header class="card-header">
-                    <h4>League Table</h4>
-                    <span>Overall standings</span>
-                </header>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Manager</th>
-                                <th>Team</th>
-                                <th>Hits</th>
-                                <th>Total Points</th>
-                                <th>Form</th>
-                            </tr>
-                        </thead>
-                        <tbody data-classic-rows>
-                            {% for row in classic_rows %}
-                            <tr>
-                                <td>#{{ row.rank }}</td>
-                                <td>{{ row.manager_name }}</td>
-                                <td>{{ row.team_name }}</td>
-                                <td>
-                                {% if row.hits %}
-                                 -{{ row.hits }}
-                                {% else %}
-                                    0
-                                {% endif %}
-                                </td>
-                                <td>{{ row.total_points }}</td>
-                                <td>
-                                    <span class="status-pill {% if row.form == 'On Fire' %}status-pill--fire{% elif row.form == 'Hot' %}status-pill--hot{% elif row.form == 'Steady' %}status-pill--steady{% elif row.form == 'Cooling' %}status-pill--cooling{% else %}status-pill--cold{% endif %}">
-                                        {{ row.form_emoji }} {{ row.form }}
-                                    </span>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5">Loading league standings…</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+<section class="card reveal">
+    <header class="card-header">
+        <h4>League Table</h4>
+        <span>Overall standings</span>
+    </header>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Manager</th>
+                    <th>Team</th>
+                    <th>Hits</th>
+                    <th>Total Points</th>
+                    <th>Form</th>
+                </tr>
+            </thead>
+
+            <tbody data-classic-rows>
+                {% for row in classic_rows %}
+                <tr>
+                    <td>#{{ row.rank }}</td>
+
+                    <td>{{ row.manager_name }}</td>
+
+                    <td>{{ row.team_name }}</td>
+
+                    <td>
+                        {% if row.hits %}
+                            <span class="hit-points">
+                                -{{ row.hits }}
+                            </span>
+                        {% else %}
+                            <span>0</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <strong>{{ row.total_points }}</strong>
+                    </td>
+
+                    <td>
+                        <span class="status-pill
+                            {% if row.form == 'On Fire' %}
+                                status-pill--fire
+                            {% elif row.form == 'Hot' %}
+                                status-pill--hot
+                            {% elif row.form == 'Steady' %}
+                                status-pill--steady
+                            {% elif row.form == 'Cooling' %}
+                                status-pill--cooling
+                            {% else %}
+                                status-pill--cold
+                            {% endif %}
+                        ">
+                            {{ row.form_emoji }} {{ row.form }}
+                        </span>
+                    </td>
+                </tr>
+
+                {% empty %}
+
+                <tr>
+                    <td colspan="6">
+                        Loading league standings…
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 
             
         </main>

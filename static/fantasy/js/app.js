@@ -207,18 +207,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const renderClassic = (payload) => {
             const leader = document.querySelector('[data-classic-leader]');
+
             if (leader) {
                 leader.textContent = `Leader ${payload.classic.leader_points} pts`;
             }
 
             const tbody = document.querySelector('[data-classic-rows]');
+
             if (!tbody) {
                 return;
             }
 
             const rows = payload.classic.rows || [];
+
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="5">No league standings available yet.</td></tr>';
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6">No league standings available yet.</td>
+                    </tr>
+                `;
                 return;
             }
 
@@ -233,18 +240,39 @@ document.addEventListener('DOMContentLoaded', () => {
                                 : row.form === 'Cooling'
                                     ? 'status-pill--cooling'
                                     : 'status-pill--cold';
+
+                    const hits = Number(row.hits || 0);
+
                     return `
                         <tr>
                             <td>#${row.rank}</td>
+
                             <td>${row.manager_name}</td>
+
                             <td>${row.team_name}</td>
-                            <td>${row.total_points}</td>
-                            <td><span class="status-pill ${formClass}">${row.form_emoji} ${row.form}</span></td>
+
+                            <td>
+                                ${
+                                    hits > 0
+                                        ? `<span class="hit-points">-${hits}</span>`
+                                        : '0'
+                                }
+                            </td>
+
+                            <td>
+                                <strong>${row.total_points}</strong>
+                            </td>
+
+                            <td>
+                                <span class="status-pill ${formClass}">
+                                    ${row.form_emoji || ''} ${row.form || ''}
+                                </span>
+                            </td>
                         </tr>
                     `;
                 })
                 .join('');
-        };
+    };
 
         const renderGameweek = (payload) => {
             const data = payload.gameweek;
