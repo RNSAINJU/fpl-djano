@@ -1774,7 +1774,7 @@ def _fetch_gameweek_leaderboard_live(
         # ------------------------------------------------------------
 
         return {
-            'entries': entries[],
+            'entries': entries[:100],
 
             'winner': (
                 entries[0]
