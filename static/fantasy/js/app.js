@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 })
                 .join('');
-    };
+        };
 
         const renderGameweek = (payload) => {
             const data = payload.gameweek;
