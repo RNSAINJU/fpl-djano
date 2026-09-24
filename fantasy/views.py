@@ -1364,457 +1364,146 @@ def _fetch_gameweek_leaderboard(
 
 
 def _fetch_gameweek_leaderboard_live(
-    league_id: int = FPL_CLASSIC_LEAGUE_ID,
-    selected_gameweek: int | None = None,
+	league_id: int = FPL_CLASSIC_LEAGUE_ID, selected_gameweek: int | None = None
 ) -> dict:
-    """
-    Gameweek Winners leaderboard.
+	"""Gameweek Winners: each manager's points for one specific gameweek,
+	picked via a dropdown, plus their cumulative total through that
+	gameweek. Finished gameweeks are read straight from
+	CaptainGameweekScore; the currently in-progress gameweek (if selected)
+	is fetched live, same pattern as Captain Mode and Manager of the
+	Month."""
+	empty = {
+		'entries': [],
+		'winner': None,
+		'available_gameweeks': [],
+		'selected_gameweek': None,
+		'selected_gameweek_finished': False,
+		'gameweek_error': None,
+	}
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		current_event = next((event for event in events if event.get('is_current')), None)
+		next_event = next((event for event in events if event.get('is_next')), None)
+		# FPL doesn't hand "current" over to the next gameweek the moment a
+		# gameweek finishes (it stays 'is_current' for a while after) - only
+		# treat it as still in progress here if it's genuinely not finished
+		# yet, otherwise the branch below re-fetches (and double-counts) a
+		# gameweek that's already stored in CaptainGameweekScore.
+		current_gameweek = current_event.get('id') if current_event and not current_event.get('finished') else None
+
+		# Kept separate from available_gameweeks below (which also includes
+		# the current gameweek purely so there's something selectable) -
+		# this is the set that actually determines whether a winner can be
+		# revealed yet.
+		truly_finished_gameweeks = {event['id'] for event in events if event.get('finished')}
+		latest_finished_gameweek = max(truly_finished_gameweeks) if truly_finished_gameweeks else None
+		finished_gameweeks = set(truly_finished_gameweeks)
+		# Only ever default/offer a gameweek that has actually started (its
+		# deadline passed, so squads are locked and points are possible) -
+		# the *next* gameweek only becomes eligible once FPL flips
+		# is_current to it, right at its own deadline. Falling back to
+		# next_event here (as this used to) meant that the moment a
+		# gameweek finished, the page jumped straight to the *following*
+		# gameweek - where nobody has any points yet - and crowned whichever
+		# manager happened to sort first as its "winner".
+		reference_gameweek = current_gameweek or latest_finished_gameweek or (next_event.get('id') if next_event else None)
+		if reference_gameweek:
+			finished_gameweeks.add(reference_gameweek)
+		available_gameweeks = sorted(finished_gameweeks)
+
+		if not available_gameweeks:
+			return {**empty, 'gameweek_error': 'Could not determine any gameweeks from the FPL API.'}
+
+		try:
+			selected_gameweek = int(selected_gameweek)
+		except (TypeError, ValueError):
+			selected_gameweek = None
+		if selected_gameweek not in available_gameweeks:
+			selected_gameweek = available_gameweeks[-1]
+		selected_gameweek_finished = selected_gameweek in truly_finished_gameweeks
+
+		entry_rows, using_new_entries = _fetch_league_entry_rows(league_id)
+		if not entry_rows:
+			return {
+				**empty,
+				'available_gameweeks': [{'value': gw, 'label': f'Gameweek {gw}'} for gw in available_gameweeks],
+				'selected_gameweek': selected_gameweek,
+				'selected_gameweek_finished': selected_gameweek_finished,
+				'gameweek_error': 'League fetched, but no members were returned yet.',
+			}
+
+		managers: dict[int, dict] = {}
+		for row in entry_rows:
+			entry_id = row.get('entry')
+			if not entry_id:
+				continue
+			if using_new_entries:
+				manager_name = f"{row.get('player_first_name', '')} {row.get('player_last_name', '')}".strip() or 'New Manager'
+			else:
+				manager_name = row.get('player_name', '').strip() or 'Unknown Manager'
+			managers[entry_id] = {
+				'entry_id': entry_id,
+				'manager_name': manager_name,
+				'team_name': row.get('entry_name', 'Unknown Team'),
+				'gameweek_points': 0,
+				'total_points': 0,
+			}
+
+		# Cumulative total through the selected gameweek, from stored finished weeks.
+		cumulative = (
+			CaptainGameweekScore.objects.filter(entry_id__in=managers.keys(), gameweek__lte=selected_gameweek)
+			.values('entry_id')
+			.annotate(total=Sum('gameweek_points'))
+		)
+		for row in cumulative:
+			if row['entry_id'] in managers:
+				managers[row['entry_id']]['total_points'] = row['total'] or 0
+
+		if selected_gameweek == current_gameweek:
+			live_points_by_player = _fetch_live_element_points(current_gameweek)
+
+			def fetch_one(entry_id: int) -> tuple[int, int] | None:
+				try:
+					picks_payload = _get_json(
+						f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
+					)
+					return entry_id, _live_net_gameweek_points(picks_payload, live_points_by_player)
+				except (error.HTTPError, error.URLError, ValueError, TimeoutError):
+					return None
+
+			with ThreadPoolExecutor(max_workers=15) as executor:
+				futures = [executor.submit(fetch_one, entry_id) for entry_id in managers]
+				for future in as_completed(futures):
+					result = future.result()
+					if result:
+						entry_id, points = result
+						managers[entry_id]['gameweek_points'] = points
+						managers[entry_id]['total_points'] += points
+		else:
+			this_gw = CaptainGameweekScore.objects.filter(
+				entry_id__in=managers.keys(), gameweek=selected_gameweek
+			).values_list('entry_id', 'gameweek_points')
+			for entry_id, points in this_gw:
+				if entry_id in managers:
+					managers[entry_id]['gameweek_points'] = points
+
+		entries = list(managers.values())
+		entries.sort(key=lambda row: row['gameweek_points'], reverse=True)
+		for index, row in enumerate(entries, start=1):
+			row['rank'] = index
+
+		return {
+			'entries': entries,
+			'winner': entries[0] if entries else None,
+			'available_gameweeks': [{'value': gw, 'label': f'Gameweek {gw}'} for gw in available_gameweeks],
+			'selected_gameweek': selected_gameweek,
+			'selected_gameweek_finished': selected_gameweek_finished,
+			'gameweek_error': None,
+		}
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
+		return {**empty, 'gameweek_error': 'Gameweek leaderboard temporarily unavailable.'}
 
-    For every manager:
-        GW Points = FPL gameweek points - transfer hit cost
-        Total Points = cumulative net points through the selected GW
-        Hits = transfer-hit cost for the selected GW
-
-    Finished gameweeks are read from CaptainGameweekScore.
-
-    The currently in-progress gameweek is fetched live and its current
-    transfer-hit cost is deducted as well.
-    """
-
-    empty = {
-        'entries': [],
-        'winner': None,
-        'available_gameweeks': [],
-        'selected_gameweek': None,
-        'selected_gameweek_finished': False,
-        'gameweek_error': None,
-    }
-
-    try:
-        # ------------------------------------------------------------
-        # BOOTSTRAP / GAMEWEEK STATUS
-        # ------------------------------------------------------------
-
-        bootstrap = _get_json(
-            'https://fantasy.premierleague.com/api/bootstrap-static/'
-        )
-
-        events = bootstrap.get('events', [])
-
-        current_event = next(
-            (
-                event
-                for event in events
-                if event.get('is_current')
-            ),
-            None,
-        )
-
-        next_event = next(
-            (
-                event
-                for event in events
-                if event.get('is_next')
-            ),
-            None,
-        )
-
-        # IMPORTANT:
-        # FPL can leave is_current=True after a GW has finished.
-        # Only treat it as live when it is genuinely unfinished.
-        current_gameweek = (
-            current_event.get('id')
-            if current_event
-            and not current_event.get('finished')
-            else None
-        )
-
-        # ------------------------------------------------------------
-        # AVAILABLE GAMEWEEKS
-        # ------------------------------------------------------------
-
-        truly_finished_gameweeks = {
-            event['id']
-            for event in events
-            if event.get('finished')
-        }
-
-        latest_finished_gameweek = (
-            max(truly_finished_gameweeks)
-            if truly_finished_gameweeks
-            else None
-        )
-
-        finished_gameweeks = set(truly_finished_gameweeks)
-
-        # The currently running GW is selectable too.
-        reference_gameweek = (
-            current_gameweek
-            or latest_finished_gameweek
-            or (
-                next_event.get('id')
-                if next_event
-                else None
-            )
-        )
-
-        if reference_gameweek:
-            finished_gameweeks.add(reference_gameweek)
-
-        available_gameweeks = sorted(finished_gameweeks)
-
-        if not available_gameweeks:
-            return {
-                **empty,
-                'gameweek_error': (
-                    'Could not determine any gameweeks '
-                    'from the FPL API.'
-                ),
-            }
-
-        # ------------------------------------------------------------
-        # SELECT GAMEWEEK
-        # ------------------------------------------------------------
-
-        try:
-            selected_gameweek = int(selected_gameweek)
-        except (TypeError, ValueError):
-            selected_gameweek = None
-
-        if selected_gameweek not in available_gameweeks:
-            selected_gameweek = available_gameweeks[-1]
-
-        selected_gameweek_finished = (
-            selected_gameweek in truly_finished_gameweeks
-        )
-
-        # ------------------------------------------------------------
-        # LEAGUE ROSTER
-        # ------------------------------------------------------------
-
-        entry_rows, using_new_entries = _fetch_league_entry_rows(
-            league_id
-        )
-
-        if not entry_rows:
-            return {
-                **empty,
-                'available_gameweeks': [
-                    {
-                        'value': gw,
-                        'label': f'Gameweek {gw}',
-                    }
-                    for gw in available_gameweeks
-                ],
-                'selected_gameweek': selected_gameweek,
-                'selected_gameweek_finished': (
-                    selected_gameweek_finished
-                ),
-                'gameweek_error': (
-                    'League fetched, but no members '
-                    'were returned yet.'
-                ),
-            }
-
-        # ------------------------------------------------------------
-        # INITIAL MANAGER DATA
-        # ------------------------------------------------------------
-
-        managers: dict[int, dict] = {}
-
-        for row in entry_rows:
-
-            entry_id = row.get('entry')
-
-            if not entry_id:
-                continue
-
-            if using_new_entries:
-                manager_name = (
-                    f"{row.get('player_first_name', '')} "
-                    f"{row.get('player_last_name', '')}"
-                ).strip() or 'New Manager'
-            else:
-                manager_name = (
-                    row.get('player_name', '').strip()
-                    or 'Unknown Manager'
-                )
-
-            managers[entry_id] = {
-                'entry_id': entry_id,
-                'manager_name': manager_name,
-                'team_name': row.get(
-                    'entry_name',
-                    'Unknown Team',
-                ),
-
-                # NET gameweek points after hit deduction.
-                'gameweek_points': 0,
-
-                # NET cumulative points after hit deductions.
-                'total_points': 0,
-
-                # Transfer-hit cost for the selected GW.
-                'hits': 0,
-            }
-
-        # ------------------------------------------------------------
-        # CUMULATIVE NET TOTAL THROUGH SELECTED GAMEWEEK
-        # ------------------------------------------------------------
-        #
-        # IMPORTANT:
-        #
-        # Old code:
-        #
-        #     Sum('gameweek_points')
-        #
-        # That ignored transfer hits.
-        #
-        # Correct:
-        #
-        #     gameweek_points - event_transfers_cost
-        #
-        # ------------------------------------------------------------
-
-        cumulative = (
-            CaptainGameweekScore.objects
-            .filter(
-                entry_id__in=managers.keys(),
-                gameweek__lte=selected_gameweek,
-            )
-            .values('entry_id')
-            .annotate(
-                total=Sum(
-                    F('gameweek_points')
-                    - F('event_transfers_cost')
-                )
-            )
-        )
-
-        for row in cumulative:
-
-            entry_id = row['entry_id']
-
-            if entry_id in managers:
-                managers[entry_id]['total_points'] = (
-                    row['total'] or 0
-                )
-
-        # ------------------------------------------------------------
-        # SELECTED GAMEWEEK
-        # ------------------------------------------------------------
-
-        if selected_gameweek == current_gameweek:
-
-            # --------------------------------------------------------
-            # LIVE CURRENT GAMEWEEK
-            # --------------------------------------------------------
-
-            live_points_by_player = _fetch_live_element_points(
-                current_gameweek
-            )
-
-            def fetch_one(
-                entry_id: int,
-            ) -> tuple[int, int, int] | None:
-
-                try:
-                    picks_payload = _get_json(
-                        'https://fantasy.premierleague.com/api/'
-                        f'entry/{entry_id}/event/'
-                        f'{current_gameweek}/picks/'
-                    )
-
-                    # This returns NET points after the current
-                    # gameweek transfer hit.
-                    net_points = _live_net_gameweek_points(
-                        picks_payload,
-                        live_points_by_player,
-                    )
-
-                    live_hits = (
-                        picks_payload
-                        .get('entry_history', {})
-                        .get(
-                            'event_transfers_cost',
-                            0,
-                        )
-                    ) or 0
-
-                    return (
-                        entry_id,
-                        net_points,
-                        live_hits,
-                    )
-
-                except (
-                    error.HTTPError,
-                    error.URLError,
-                    ValueError,
-                    TimeoutError,
-                ):
-                    return None
-
-            with ThreadPoolExecutor(
-                max_workers=15
-            ) as executor:
-
-                futures = [
-                    executor.submit(
-                        fetch_one,
-                        entry_id,
-                    )
-                    for entry_id in managers
-                ]
-
-                for future in as_completed(futures):
-
-                    result = future.result()
-
-                    if not result:
-                        continue
-
-                    (
-                        entry_id,
-                        net_points,
-                        hits,
-                    ) = result
-
-                    managers[entry_id][
-                        'gameweek_points'
-                    ] = net_points
-
-                    managers[entry_id][
-                        'hits'
-                    ] = hits
-
-                    # total_points already contains the
-                    # finished GWs. Add the CURRENT GW
-                    # NET points on top.
-                    managers[entry_id][
-                        'total_points'
-                    ] += net_points
-
-        else:
-
-            # --------------------------------------------------------
-            # FINISHED GAMEWEEK
-            # --------------------------------------------------------
-            #
-            # Fetch both the original GW points and the hit cost.
-            #
-            # Displayed GW Points = points - hits
-            #
-            # --------------------------------------------------------
-
-            this_gw = (
-                CaptainGameweekScore.objects
-                .filter(
-                    entry_id__in=managers.keys(),
-                    gameweek=selected_gameweek,
-                )
-                .values(
-                    'entry_id',
-                    'gameweek_points',
-                    'event_transfers_cost',
-                )
-            )
-
-            for row in this_gw:
-
-                entry_id = row['entry_id']
-
-                if entry_id not in managers:
-                    continue
-
-                gross_points = (
-                    row.get('gameweek_points')
-                    or 0
-                )
-
-                hits = (
-                    row.get('event_transfers_cost')
-                    or 0
-                )
-
-                # NET GAMEWEEK POINTS
-                net_points = gross_points - hits
-
-                managers[entry_id][
-                    'gameweek_points'
-                ] = net_points
-
-                managers[entry_id][
-                    'hits'
-                ] = hits
-
-        # ------------------------------------------------------------
-        # SORT BY NET GAMEWEEK POINTS
-        # ------------------------------------------------------------
-
-        entries = list(managers.values())
-
-        entries.sort(
-            key=lambda row: row['gameweek_points'],
-            reverse=True,
-        )
-
-        # ------------------------------------------------------------
-        # RANK
-        # ------------------------------------------------------------
-
-        for index, row in enumerate(
-            entries,
-            start=1,
-        ):
-            row['rank'] = index
-
-        # ------------------------------------------------------------
-        # RETURN
-        # ------------------------------------------------------------
-
-        return {
-            'entries': entries[:100],
-
-            'winner': (
-                entries[0]
-                if entries
-                else None
-            ),
-
-            'available_gameweeks': [
-                {
-                    'value': gw,
-                    'label': f'Gameweek {gw}',
-                }
-                for gw in available_gameweeks
-            ],
-
-            'selected_gameweek': selected_gameweek,
-
-            'selected_gameweek_finished': (
-                selected_gameweek_finished
-            ),
-
-            'gameweek_error': None,
-        }
-
-    except (
-        error.HTTPError,
-        error.URLError,
-        ValueError,
-        KeyError,
-        TypeError,
-        TimeoutError,
-    ):
-
-        return {
-            **empty,
-            'gameweek_error': (
-                'Gameweek leaderboard '
-                'temporarily unavailable.'
-            ),
-        }
 
 def _month_label(year_month: str) -> str:
 	return datetime.strptime(year_month, '%Y-%m').strftime('%B %Y')
