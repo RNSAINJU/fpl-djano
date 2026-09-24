@@ -946,17 +946,7 @@ def _fetch_league_entry_rows(league_id: int) -> tuple[list[dict], bool]:
 
 
 def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
-	"""Classic League standings, built the same way as Gameweek Winners /
-	Manager of the Month / Captain Mode: each entry's season total and
-	latest-gameweek points come from CaptainGameweekScore's stored
-	finished-gameweek totals plus a live per-entry fetch for whichever
-	gameweek is still in progress - not from FPL's own classic-league
-	standings 'total'/'event_total' fields. FPL only refreshes those on its
-	own batch schedule, well behind live play, so trusting them made this
-	page disagree with every other page on the site (sometimes by dozens
-	of points) while a gameweek was live. Rank is then recomputed from the
-	fresh totals too, since FPL's own 'rank' field lags for the same
-	reason and would otherwise no longer match the points shown."""
+	"""Classic League standings with transfer-hit deductions."""
 	try:
 		entry_rows, using_new_entries, league_name = _fetch_league_roster(league_id)
 
@@ -964,14 +954,24 @@ def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tu
 			return [], league_name, 'League fetched, but no members were returned yet.'
 
 		managers: dict[int, dict] = {}
+
 		for item in entry_rows:
 			entry_id = item.get('entry')
+
 			if not entry_id:
 				continue
+
 			if using_new_entries:
-				manager_name = f"{item.get('player_first_name', '')} {item.get('player_last_name', '')}".strip() or 'New Manager'
+				manager_name = (
+					f"{item.get('player_first_name', '')} "
+					f"{item.get('player_last_name', '')}"
+				).strip() or 'New Manager'
 			else:
-				manager_name = item.get('player_name', '').strip() or 'Unknown Manager'
+				manager_name = (
+					item.get('player_name', '').strip()
+					or 'Unknown Manager'
+				)
+
 			managers[entry_id] = {
 				'entry_id': entry_id,
 				'manager_name': manager_name,
@@ -981,81 +981,223 @@ def _fetch_fpl_league_entries_live(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tu
 				'hits': 0,
 			}
 
-		if not using_new_entries:
-			bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
-			current_event = next((event for event in bootstrap.get('events', []) if event.get('is_current')), None)
-			# FPL doesn't hand "current" over to the next gameweek the moment
-			# a gameweek finishes (it stays 'is_current' for a while after)
-			# - trusting that flag alone made this double-count a finished
-			# gameweek's points: once for its CaptainGameweekScore row, then
-			# again from this live fetch. Only treat a gameweek as still
-			# "current" for the live top-up below if it's genuinely not
-			# finished yet.
-			current_gameweek = current_event.get('id') if current_event and not current_event.get('finished') else None
-
-			stored_totals = (
-				CaptainGameweekScore.objects.filter(entry_id__in=managers.keys())
-				.values('entry_id')
-				.annotate(
-					total=Sum(
-            			F('gameweek_points') - F('event_transfers_cost')
-					),
-        			hits=Sum('event_transfers_cost'),
-				)
-			)
-			for row in stored_totals:
-				if row['entry_id'] in managers:
-					managers[row['entry_id']]['total_points'] = row['total'] or 0
-        			managers[row['entry_id']]['hits'] = row['hits'] or 0
-
-			latest_finished_gameweek = CaptainGameweekScore.objects.filter(
-				entry_id__in=managers.keys()
-			).aggregate(latest=Max('gameweek'))['latest']
-			if latest_finished_gameweek:
-				latest_gw_points = CaptainGameweekScore.objects.filter(
-					entry_id__in=managers.keys(), gameweek=latest_finished_gameweek
-				).values_list('entry_id', 'gameweek_points')
-				for entry_id, points in latest_gw_points:
-					if entry_id in managers:
-						managers[entry_id]['gameweek_points'] = points
-
-			if current_gameweek:
-				live_points_by_player = _fetch_live_element_points(current_gameweek)
-
-				def fetch_one(entry_id: int) -> tuple[int, int] | None:
-					try:
-						picks_payload = _get_json(
-							f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
-						)
-						return entry_id, _live_net_gameweek_points(picks_payload, live_points_by_player)
-					except (error.HTTPError, error.URLError, ValueError, TimeoutError):
-						return None
-
-				with ThreadPoolExecutor(max_workers=15) as executor:
-					futures = [executor.submit(fetch_one, entry_id) for entry_id in managers]
-					for future in as_completed(futures):
-						result = future.result()
-						if result:
-							entry_id, points, hits  = result
-							managers[entry_id]['gameweek_points'] = points
-							managers[entry_id]['total_points'] += points
-							managers[entry_id]['hits'] += hits
-
-		entries = list(managers.values())
+		# ------------------------------------------------------------
+		# PRE-SEASON
+		# ------------------------------------------------------------
 		if using_new_entries:
-			# Pre-season, nobody has scored yet - rank by join order instead
-			# of tying everyone at #1 on 0 points.
+			entries = list(managers.values())
+
 			for index, row in enumerate(entries, start=1):
 				row['rank'] = index
-		else:
-			entries.sort(key=lambda row: row['total_points'], reverse=True)
-			for row in entries:
-				row['rank'] = 1 + sum(1 for other in entries if other['total_points'] > row['total_points'])
+
+			return entries, league_name, None
+
+		# ------------------------------------------------------------
+		# BOOTSTRAP / CURRENT GAMEWEEK
+		# ------------------------------------------------------------
+		bootstrap = _get_json(
+			'https://fantasy.premierleague.com/api/bootstrap-static/'
+		)
+
+		current_event = next(
+			(
+				event
+				for event in bootstrap.get('events', [])
+				if event.get('is_current')
+			),
+			None,
+		)
+
+		# Only fetch live points when the current event is actually
+		# still in progress. Otherwise the finished GW already exists
+		# in CaptainGameweekScore.
+		current_gameweek = (
+			current_event.get('id')
+			if current_event
+			and not current_event.get('finished')
+			else None
+		)
+
+		# ------------------------------------------------------------
+		# FINISHED GAMEWEEKS
+		# ------------------------------------------------------------
+		#
+		# NET POINTS:
+		#
+		# gameweek_points - event_transfers_cost
+		#
+		stored_totals = (
+			CaptainGameweekScore.objects
+			.filter(
+				entry_id__in=managers.keys()
+			)
+			.values('entry_id')
+			.annotate(
+				total=Sum(
+					F('gameweek_points')
+					- F('event_transfers_cost')
+				),
+				hits=Sum(
+					'event_transfers_cost'
+				),
+			)
+		)
+
+		for row in stored_totals:
+			entry_id = row['entry_id']
+
+			if entry_id in managers:
+				managers[entry_id]['total_points'] = (
+					row['total'] or 0
+				)
+
+				managers[entry_id]['hits'] = (
+					row['hits'] or 0
+				)
+
+		# ------------------------------------------------------------
+		# LATEST FINISHED GAMEWEEK
+		# ------------------------------------------------------------
+		latest_finished_gameweek = (
+			CaptainGameweekScore.objects
+			.filter(
+				entry_id__in=managers.keys()
+			)
+			.aggregate(
+				latest=Max('gameweek')
+			)['latest']
+		)
+
+		if latest_finished_gameweek:
+			latest_gw_points = (
+				CaptainGameweekScore.objects
+				.filter(
+					entry_id__in=managers.keys(),
+					gameweek=latest_finished_gameweek,
+				)
+				.values_list(
+					'entry_id',
+					'gameweek_points',
+				)
+			)
+
+			for entry_id, points in latest_gw_points:
+				if entry_id in managers:
+					managers[entry_id]['gameweek_points'] = (
+						points or 0
+					)
+
+		# ------------------------------------------------------------
+		# LIVE CURRENT GAMEWEEK
+		# ------------------------------------------------------------
+		if current_gameweek:
+			live_points_by_player = _fetch_live_element_points(
+				current_gameweek
+			)
+
+			def fetch_one(
+				entry_id: int,
+			) -> tuple[int, int, int] | None:
+				try:
+					picks_payload = _get_json(
+						f'https://fantasy.premierleague.com/api/'
+						f'entry/{entry_id}/event/'
+						f'{current_gameweek}/picks/'
+					)
+
+					# This already subtracts the current GW hit.
+					net_points = _live_net_gameweek_points(
+						picks_payload,
+						live_points_by_player,
+					)
+
+					live_hits = (
+						picks_payload
+						.get('entry_history', {})
+						.get('event_transfers_cost', 0)
+					) or 0
+
+					return (
+						entry_id,
+						net_points,
+						live_hits,
+					)
+
+				except (
+					error.HTTPError,
+					error.URLError,
+					ValueError,
+					TimeoutError,
+				):
+					return None
+
+			with ThreadPoolExecutor(
+				max_workers=15
+			) as executor:
+
+				futures = [
+					executor.submit(
+						fetch_one,
+						entry_id
+					)
+					for entry_id in managers
+				]
+
+				for future in as_completed(futures):
+					result = future.result()
+
+					if not result:
+						continue
+
+					entry_id, points, hits = result
+
+					managers[entry_id]['gameweek_points'] = points
+
+					# points is already NET of the current GW hit.
+					managers[entry_id]['total_points'] += points
+
+					# Keep hit amount separately for display.
+					managers[entry_id]['hits'] += hits
+
+		# ------------------------------------------------------------
+		# SORT
+		# ------------------------------------------------------------
+		entries = list(managers.values())
+
+		entries.sort(
+			key=lambda row: row['total_points'],
+			reverse=True,
+		)
+
+		# ------------------------------------------------------------
+		# RANK
+		# ------------------------------------------------------------
+		for row in entries:
+			row['rank'] = (
+				1
+				+ sum(
+					1
+					for other in entries
+					if other['total_points']
+					> row['total_points']
+				)
+			)
 
 		return entries, league_name, None
-	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError):
-		return [], f'FPL League {league_id}', 'Live league data unavailable. Showing local data.'
 
+	except (
+		error.HTTPError,
+		error.URLError,
+		ValueError,
+		KeyError,
+		TypeError,
+		TimeoutError,
+	):
+		return (
+			[],
+			f'FPL League {league_id}',
+			'Live league data unavailable. Showing local data.',
+		)
 
 def _fetch_captain_leaderboard(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> tuple[list[dict], str, str | None]:
 	return cache.get_or_set(
@@ -1562,19 +1704,48 @@ def _form_for_gameweek_points(gameweek_points: int) -> tuple[str, str]:
 
 
 def _build_classic_data(rows: list[dict]) -> dict:
-	sorted_rows = sorted(rows, key=lambda row: row['rank'])
-	leader_points = sorted_rows[0]['total_points'] if sorted_rows else 0
+	sorted_rows = sorted(
+		rows,
+		key=lambda row: row['rank']
+	)
+
+	leader_points = (
+		sorted_rows[0]['total_points']
+		if sorted_rows
+		else 0
+	)
+
 	classic_rows = []
+
 	for row in sorted_rows:
-		form, form_emoji = _form_for_gameweek_points(row['gameweek_points'])
+		form, form_emoji = _form_for_gameweek_points(
+			row.get('gameweek_points', 0)
+		)
+
 		classic_rows.append(
 			{
+				'entry_id': row.get('entry_id'),
+
 				'rank': row['rank'],
+
 				'manager_name': row['manager_name'],
+
 				'team_name': row['team_name'],
+
+				# NET total after transfer hits.
 				'total_points': row['total_points'],
+
+				# Total transfer-hit cost.
 				'hits': row.get('hits', 0),
+
+				# Latest gameweek points.
+				'gameweek_points': row.get(
+					'gameweek_points',
+					0
+				),
+
 				'form': form,
+
 				'form_emoji': form_emoji,
 			}
 		)
