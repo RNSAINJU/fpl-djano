@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Past Seasons{% endblock %}
+{% block title %}About Us | FPL Bhaktapur{% endblock %}
 
 {% block content %}
 <div class="app-shell">
@@ -40,45 +41,29 @@
             <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to dashboard</a>
         </header>
 
-        <main id="main-content" class="main-content">
+        <main id="main-content" class="main-content about-page">
             <section class="team-hero reveal">
-                <div>
-                    <p class="kicker">Season Archive</p>
-                    <h3>Past Seasons</h3>
-                </div>
+                <div><p class="kicker">FPL Bhaktapur</p><h3>About Us</h3><p>Our community. Our story. Our love of the game.</p></div>
             </section>
-
-            <section class="card reveal">
-                <header class="card-header">
-                    <h4>Archived Seasons</h4>
-                    <span>{{ seasons|length }} archived</span>
-                </header>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Season</th>
-                                <th>League</th>
-                                <th>Archived</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for season in seasons %}
-                            <tr>
-                                <td>{{ season.name }}</td>
-                                <td>{{ season.league_name|default:'-' }}</td>
-                                <td>{{ season.archived_at|date:'d M Y' }}</td>
-                                <td><a class="pick-link" href="{% url 'fantasy:season_detail' season.id %}">View results</a></td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4">No seasons archived yet - check back once the current season wraps up.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            <section class="card reveal" aria-labelledby="about-description">
+                <h3 id="about-description">Who we are</h3>
+                <div class="about-copy">{{ about.about_description|linebreaks }}</div>
+            </section>
+            <section class="card reveal" aria-labelledby="about-history">
+                <h3 id="about-history">Our history</h3>
+                {% if about.about_history %}<div class="about-copy">{{ about.about_history|linebreaks }}</div>
+                {% else %}<p class="about-copy">Our league story will be shared here soon.</p>{% endif %}
+                <a class="topbar-button" href="{% url 'fantasy:past_seasons' %}">Explore past seasons</a>
+            </section>
+            <section class="card reveal" aria-labelledby="about-contact">
+                <h3 id="about-contact">Contact us</h3>
+                {% if about.contact_email or about.contact_phone or about.contact_address %}
+                <dl class="about-contact">
+                    {% if about.contact_email %}<div><dt>Email</dt><dd><a href="mailto:{{ about.contact_email }}">{{ about.contact_email }}</a></dd></div>{% endif %}
+                    {% if about.contact_phone %}<div><dt>Phone</dt><dd>{{ about.contact_phone }}</dd></div>{% endif %}
+                    {% if about.contact_address %}<div><dt>Address</dt><dd>{{ about.contact_address|linebreaksbr }}</dd></div>{% endif %}
+                </dl>
+                {% else %}<p class="about-copy">Contact details will be shared here soon.</p>{% endif %}
             </section>
         </main>
     </div>

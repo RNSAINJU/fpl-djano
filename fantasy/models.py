@@ -144,6 +144,11 @@ class SiteSettings(models.Model):
 	text. Always saved/loaded at pk=1 so there's exactly one place to
 	manage the logo and page copy shown across the public site and the
 	admin panel."""
+	about_description = models.TextField(default='FPL Bhaktapur brings our Fantasy Premier League community together. Follow league standings, gameweek winners, monthly awards, and captain performances throughout the season.')
+	about_history = models.TextField(blank=True, default='Sample history: What began as a friendly competition grew into a shared season of football, rivalries, and memorable gameweeks. Replace this sample with the real story of FPL Bhaktapur.', help_text='Tell the story of the league, including its founding and memorable seasons. Plain text.')
+	contact_email = models.EmailField(blank=True, default='hello@example.com', help_text='Sample email: replace before publishing.')
+	contact_phone = models.CharField(max_length=50, blank=True, default='Sample phone — add your number')
+	contact_address = models.TextField(blank=True, default='Sample address — add your public contact location')
 	logo = models.ImageField(
 		upload_to='branding/',
 		blank=True,

@@ -2686,3 +2686,12 @@ td small {
         font-size: 22px;
     }
 }
+
+/* About Us: readable plain-text content and wrapping contact details. */
+.about-page .card { padding: 28px; }
+.about-copy { line-height: 1.75; max-width: 75ch; overflow-wrap: anywhere; }
+.about-copy p { margin: 14px 0; }
+.about-contact { display: grid; gap: 20px; margin: 20px 0 0; }
+.about-contact dt { font-weight: 700; margin-bottom: 6px; }
+.about-contact dd { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+.about-contact a { color: var(--brand); }

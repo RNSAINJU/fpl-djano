@@ -179,3 +179,29 @@ class GameweekTransferHitTests(TestCase):
         self.assertEqual(row['gameweek_points'], 66)
         self.assertEqual(row['total_points'], 158)
         self.assertEqual(row['hits'], 4)
+
+
+class AboutUsPageTests(TestCase):
+    def test_page_displays_admin_content_as_text(self):
+        from .models import SiteSettings
+        settings = SiteSettings.load()
+        settings.about_description = '<script>alert(1)</script> Community description'
+        settings.about_history = 'Our first season was memorable.'
+        settings.contact_email = 'organizer@example.com'
+        settings.save()
+        response = self.client.get(reverse('fantasy:about_us'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Our first season was memorable.')
+        self.assertContains(response, 'mailto:organizer@example.com')
+        self.assertContains(response, '&lt;script&gt;')
+        self.assertNotContains(response, '<script>alert(1)</script>')
+        self.assertContains(response, 'class="active" href="/about-us/"')
+
+    def test_blank_contact_details_have_no_empty_links(self):
+        from .models import SiteSettings
+        settings = SiteSettings.load()
+        settings.contact_email = settings.contact_phone = settings.contact_address = ''
+        settings.save()
+        response = self.client.get(reverse('fantasy:about_us'))
+        self.assertContains(response, 'Contact details will be shared here soon.')
+        self.assertNotContains(response, 'mailto:')

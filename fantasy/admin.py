@@ -121,6 +121,7 @@ class PageAdvertisementAdmin(admin.ModelAdmin):
 
 class SiteSettingsAdmin(admin.ModelAdmin):
 	fieldsets = (
+		('About Us', {'fields': ('about_description', 'about_history', 'contact_email', 'contact_phone', 'contact_address'), 'description': 'Public About Us page. Use plain text; leave unavailable contact details blank.'}),
 		('Logo', {'fields': ('logo', 'updated_at'), 'description': 'Upload once - it appears in the sidebar across the whole site and this admin.'}),
 		(
 			'Explanation text',

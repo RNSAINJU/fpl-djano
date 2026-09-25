@@ -19,6 +19,7 @@ from .models import (
 	SeasonGameweekWinner,
 	SeasonMonthlyWinner,
 	SeasonStanding,
+	SiteSettings,
 )
 
 FPL_CLASSIC_LEAGUE_ID = 6232
@@ -2373,10 +2374,18 @@ def league_live_data(request):
 	return JsonResponse(response)
 
 
+def about_us(request):
+	return render(request, 'fantasy/about_us.html', {
+		'active_page': 'about_us',
+		'about': SiteSettings.load(),
+	})
+
+
 def prizes(request):
 	base_context = _base_page_context('prizes')
 	context = {
 		**base_context,
+		'advertisements': PageAdvertisement.objects.exclude(image='').exclude(image__isnull=True),
 	}
 	return render(request, 'fantasy/prizes.html', context)
 

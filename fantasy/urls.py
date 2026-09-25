@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    about_us,
     captain_mode,
     classic_league,
     gameweek_winners,
@@ -17,6 +18,7 @@ from .views import (
 app_name = 'fantasy'
 
 urlpatterns = [
+    path('about-us/', about_us, name='about_us'),
     path('', home, name='home'),
     path('live-gameweek/', live_gameweek, name='live_gameweek'),
     path('captain-mode/', captain_mode, name='captain_mode'),

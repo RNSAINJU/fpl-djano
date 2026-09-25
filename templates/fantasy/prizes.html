@@ -24,6 +24,7 @@
             <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
             <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:gameweekhistory' %}">Gameweek History</a>
             <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:past_seasons' %}">Past Seasons</a>
+            <a class="{% if active_page == 'about_us' %}active{% endif %}" href="{% url 'fantasy:about_us' %}">About Us</a>
         </nav>
     </aside>
 
@@ -51,6 +52,20 @@
             <section class="card reveal">
                 <img src="{% static 'fantasy/img/prizes.jpg' %}" alt="FPL Bhaktapur game modes and money prizes" style="width: 100%; height: auto; border-radius: 12px; display: block;">
             </section>
+
+            <section class="card reveal" aria-labelledby="claim-prize-title">
+                <h3 id="claim-prize-title">Claim your prize</h3>
+                <p>To claim, DM <a href="https://www.facebook.com/fplbhaktapur/" target="_blank" rel="noopener noreferrer">FPL Bhaktapur official page</a>.</p>
+            </section>
+
+            {% if advertisements %}
+            <section aria-labelledby="prize-partners-title">
+                <h3 id="prize-partners-title">Our prize partners</h3>
+                {% for advertisement in advertisements %}
+                    {% include 'fantasy/_league_banner.html' with page_ad=advertisement league_name=advertisement.get_page_display league_error='' %}
+                {% endfor %}
+            </section>
+            {% endif %}
         </main>
     </div>
 </div>
