@@ -76,7 +76,7 @@
             <section aria-labelledby="prize-partners-title">
                 <h3 id="prize-partners-title">Our prize partners</h3>
                 {% for advertisement in advertisements %}
-                    {% include 'fantasy/_league_banner.html' with page_ad=advertisement league_name=advertisement.get_page_display league_error='' %}
+                    {% include 'fantasy/_league_banner.html' with page_ad=advertisement league_name=advertisement.get_page_display league_error='' show_prize=True %}
                 {% endfor %}
             </section>
             {% endif %}

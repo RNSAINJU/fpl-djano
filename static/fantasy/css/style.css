@@ -1119,6 +1119,39 @@ body {
     margin: 0;
 }
 
+.league-banner__prize {
+    margin: 14px 0 0 52px;
+}
+
+.league-banner__prize-label {
+    display: inline-block;
+    margin-bottom: 7px;
+    color: var(--brand);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.league-banner__prize ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.league-banner__prize li {
+    padding: 7px 10px;
+    border: 1px solid #d8c8da;
+    border-radius: 999px;
+    background: #f7f1f8;
+    color: var(--text-dark);
+    font-size: 12px;
+    font-weight: 700;
+}
+
 .league-banner__ad {
     flex: 1 1 50%;
     min-width: 0;
@@ -1208,6 +1241,8 @@ body {
         padding-left: 0;
         padding-top: 14px;
     }
+
+    .league-banner__prize { margin-left: 0; }
 }
 
 .top-picks-player {
@@ -2744,3 +2779,56 @@ a.prize-claim__button:hover { background: #75ffbd; }
 a.prize-claim__button:focus-visible { outline: 3px solid #fff; outline-offset: 5px; }
 .prize-claim__button svg { flex-shrink: 0; }
 .prize-claim__destination { font-size: 12px; color: #d9c7de; text-align: center; }
+
+/* Expandable FPL ID help below the team lookup form. */
+.fpl-id-help {
+    margin-top: 16px;
+    border: 1px solid #ded5e1;
+    border-radius: 12px;
+    background: #faf8fb;
+    overflow: hidden;
+}
+.fpl-id-help summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 15px 17px;
+    color: var(--brand);
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+.fpl-id-help summary::-webkit-details-marker { display: none; }
+.fpl-id-help summary::after {
+    content: '+';
+    display: grid;
+    place-items: center;
+    width: 25px;
+    height: 25px;
+    flex: 0 0 25px;
+    border-radius: 50%;
+    background: #eee7ef;
+    font-size: 20px;
+    line-height: 1;
+}
+.fpl-id-help[open] summary::after { content: '\2212'; }
+.fpl-id-help summary:focus-visible { outline: 3px solid var(--brand-bright); outline-offset: -3px; }
+.fpl-id-help__body {
+    padding: 0 17px 17px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+.fpl-id-help__body p { margin: 0 0 12px; }
+.fpl-id-help__body a { color: var(--brand); font-weight: 600; }
+.fpl-id-help__body code {
+    display: block;
+    max-width: 100%;
+    padding: 12px 14px;
+    border-radius: 9px;
+    background: #251129;
+    color: #fff;
+    font-family: Consolas, monospace;
+    overflow-wrap: anywhere;
+}
+.fpl-id-help__body code strong { color: var(--brand-bright); }

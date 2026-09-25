@@ -12,6 +12,14 @@ Instagram/Facebook icon links under the image.
             {% if site_logo_url %}<img src="{{ site_logo_url }}" alt="Site logo" class="league-banner__logo">{% endif %}
             <h4 data-league-name>{{ league_name }}</h4>
         </div>
+        {% if show_prize and page_ad.prize_lines %}
+        <div class="league-banner__prize">
+            <span class="league-banner__prize-label">Cash prize</span>
+            <ul>
+                {% for prize_line in page_ad.prize_lines %}<li>{{ prize_line }}</li>{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
         <p class="inline-error {% if not league_error %}is-hidden{% endif %}" data-league-error>{{ league_error|default:'' }}</p>
     </div>
     <div class="league-banner__ad">

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Classic League{% endblock %}
+{% block title %}Gameweek History{% endblock %}
 
 {% block content %}
 <div class="app-shell">
@@ -22,7 +22,7 @@
             <a class="{% if active_page == 'classic_league' %}active{% endif %}" href="{% url 'fantasy:classic_league' %}">Classic League</a>
             <a class="{% if active_page == 'gameweek_winners' %}active{% endif %}" href="{% url 'fantasy:gameweek_winners' %}">GW Winners</a>
             <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
-            <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:gameweekhistory' %}">Gameweek History</a>
+            <a class="{% if active_page == 'gameweekhistory' %}active{% endif %}" href="{% url 'fantasy:gameweekhistory' %}">Gameweek History</a>
             <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:past_seasons' %}">Past Seasons</a>
 
         </nav>
@@ -41,7 +41,7 @@
             <a class="topbar-button" href="{% url 'fantasy:home' %}">Back to dashboard</a>
         </header>
 
-        <main id="main-content" class="main-content" data-league-page="classic" data-live-endpoint="{% url 'fantasy:league_live_data' %}">
+        <main id="main-content" class="main-content">
             <section class="team-hero reveal">
                 <div>
                     <p class="kicker">Core Competition</p>
@@ -77,8 +77,26 @@
 
             <section class="card reveal">
                 <header class="card-header">
-                    <h4>Gameweek History</h4>
-                    <span>Points and captain picks by gameweek</span>
+                    <h4>Choose Gameweek</h4>
+                    <span>{% if selected_gameweek %}Gameweek {{ selected_gameweek }}{% else %}Finished gameweeks{% endif %}</span>
+                </header>
+                {% if gameweek_history_ids %}
+                <form class="tracker-form" method="get" action="{% url 'fantasy:gameweekhistory' %}">
+                    <label for="history-gameweek-select">Choose a gameweek</label>
+                    <select id="history-gameweek-select" name="gameweek" onchange="this.form.submit()">
+                        {% for gw in gameweek_history_ids %}
+                        <option value="{{ gw }}"{% if gw == selected_gameweek %} selected{% endif %}>Gameweek {{ gw }}</option>
+                        {% endfor %}
+                    </select>
+                    <noscript><button type="submit">Show gameweek</button></noscript>
+                </form>
+                {% endif %}
+            </section>
+
+            <section class="card reveal">
+                <header class="card-header">
+                    <h4>Gameweek Results</h4>
+                    <span>{% if selected_gameweek %}Gameweek {{ selected_gameweek }}{% else %}No finished gameweeks{% endif %}</span>
                 </header>
                 <div class="table-wrap">
                     <table>
@@ -87,11 +105,11 @@
                                 <th>Rank</th>
                                 <th>Manager</th>
                                 <th>Team</th>
-                                {% for gw in gameweek_history_ids %}
-                                <th>GW{{ gw }}</th>
-                                {% endfor %}
-                                <th>Total</th>
-                                <th>Captain Total</th>
+                                <th>Hits</th>
+                                <th>GW Points</th>
+                                <th>Captain</th>
+                                <th>Captain Points</th>
+                                <th>Total Points</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -100,22 +118,15 @@
                                 <td>#{{ row.rank }}</td>
                                 <td>{{ row.manager_name }}</td>
                                 <td>{{ row.team_name }}</td>
-                                {% for gw_data in row.points_row %}
-                                <td>
-                                    {% if gw_data %}
-                                    {{ gw_data.points }}<br>
-                                    <small>C: {{ gw_data.captain_name|default:'-' }} ({{ gw_data.captain_points }})</small>
-                                    {% else %}
-                                    -
-                                    {% endif %}
-                                </td>
-                                {% endfor %}
+                                <td>{% if row.hits %}-{{ row.hits }}{% else %}0{% endif %}</td>
+                                <td><strong>{{ row.gameweek_points }}</strong></td>
+                                <td>{{ row.captain_name }}</td>
+                                <td>{{ row.captain_points }}</td>
                                 <td><strong>{{ row.total_points }}</strong></td>
-                                <td>{{ row.total_captain_points }}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="5">No finished gameweeks yet.</td>
+                                <td colspan="8">No finished gameweek data available yet.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

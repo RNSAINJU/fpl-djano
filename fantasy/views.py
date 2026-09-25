@@ -1764,9 +1764,11 @@ def _build_classic_data(rows: list[dict]) -> dict:
 	}
 
 
-def _fetch_gameweek_history(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> dict:
-	"""Every league member's points for every FINISHED gameweek, side by
-	side. Deliberately DB-only - CaptainGameweekScore is only ever written
+def _fetch_gameweek_history(
+	league_id: int = FPL_CLASSIC_LEAGUE_ID, selected_gameweek: int | str | None = None
+) -> dict:
+	"""Every league member's points for one selected FINISHED gameweek.
+	Deliberately DB-only - CaptainGameweekScore is only ever written
 	for a gameweek once it's finished (populated by sync_fpl_data every 15
 	minutes), so this never makes a live FPL API call and stays cheap
 	enough to compute synchronously in the page view, unlike the
@@ -1790,34 +1792,48 @@ def _fetch_gameweek_history(league_id: int = FPL_CLASSIC_LEAGUE_ID) -> dict:
 			'entry_id': entry_id,
 			'manager_name': manager_name,
 			'team_name': item.get('entry_name', 'Unknown Team'),
-			'gameweek_data': {},
-			'total_points': 0,
-			'total_captain_points': 0,
 		}
 
-	score_rows = CaptainGameweekScore.objects.filter(entry_id__in=managers.keys()).values(
-		'entry_id', 'gameweek', 'gameweek_points', 'captain_name', 'captain_points'
-	)
+	score_rows = list(CaptainGameweekScore.objects.filter(entry_id__in=managers.keys()).values(
+		'entry_id', 'gameweek', 'gameweek_points', 'event_transfers_cost', 'captain_name', 'captain_points'
+	))
 	gameweek_ids = sorted({row['gameweek'] for row in score_rows})
+	try:
+		selected_gameweek = int(selected_gameweek)
+	except (TypeError, ValueError):
+		selected_gameweek = None
+	if selected_gameweek not in gameweek_ids:
+		selected_gameweek = gameweek_ids[-1] if gameweek_ids else None
+
+	selected_scores = {}
+	cumulative_totals = {entry_id: 0 for entry_id in managers}
 	for row in score_rows:
-		manager = managers.get(row['entry_id'])
-		if manager:
-			manager['gameweek_data'][row['gameweek']] = {
-				'points': row['gameweek_points'],
-				'captain_name': row['captain_name'],
+		entry_id = row['entry_id']
+		net_points = row['gameweek_points'] - (row['event_transfers_cost'] or 0)
+		if selected_gameweek and row['gameweek'] <= selected_gameweek:
+			cumulative_totals[entry_id] += net_points
+		if row['gameweek'] == selected_gameweek:
+			selected_scores[entry_id] = {
+				'gameweek_points': net_points,
+				'hits': row['event_transfers_cost'] or 0,
+				'captain_name': row['captain_name'] or '-',
 				'captain_points': row['captain_points'],
 			}
-			manager['total_points'] += row['gameweek_points']
-			manager['total_captain_points'] += row['captain_points']
 
-	history_rows = list(managers.values())
-	history_rows.sort(key=lambda row: row['total_points'], reverse=True)
+	history_rows = []
+	for entry_id, score in selected_scores.items():
+		history_rows.append({
+			**managers[entry_id],
+			**score,
+			'total_points': cumulative_totals[entry_id],
+		})
+	history_rows.sort(key=lambda row: (-row['gameweek_points'], row['manager_name'].lower()))
 	for row in history_rows:
-		row['rank'] = 1 + sum(1 for other in history_rows if other['total_points'] > row['total_points'])
-		row['points_row'] = [row['gameweek_data'].get(gw) for gw in gameweek_ids]
+		row['rank'] = 1 + sum(1 for other in history_rows if other['gameweek_points'] > row['gameweek_points'])
 
 	return {
 		'gameweek_history_ids': gameweek_ids,
+		'selected_gameweek': selected_gameweek,
 		'gameweek_history_rows': history_rows,
 	}
 
@@ -2254,10 +2270,6 @@ def classic_league(request):
 		'page_ad': _page_ad(PageAdvertisement.Page.CLASSIC_LEAGUE),
 		'season_finished': season_finished,
 		'classic_season_winner': classic_season_winner,
-		# DB-only (see _fetch_gameweek_history's docstring) so unlike the
-		# league table above, this is safe to compute synchronously here
-		# rather than async-loading it too.
-		**_fetch_gameweek_history(),
 	}
 	return render(request, 'fantasy/classic_league.html', context)
 
@@ -2287,7 +2299,7 @@ def gameweekhistory(request):
 		# DB-only (see _fetch_gameweek_history's docstring) so unlike the
 		# league table above, this is safe to compute synchronously here
 		# rather than async-loading it too.
-		**_fetch_gameweek_history(),
+		**_fetch_gameweek_history(selected_gameweek=request.GET.get('gameweek')),
 	}
 	return render(request, 'fantasy/gameweekhistory.html', context)
 

@@ -264,6 +264,20 @@ class PageAdvertisement(models.Model):
 	def __str__(self):
 		return self.get_page_display()
 
+	@property
+	def prize_lines(self):
+		"""Cash-prize details shown with this competition on the Prizes page."""
+		return {
+			self.Page.CAPTAIN_MODE: ['Winner — Rs. 5,000'],
+			self.Page.CLASSIC_LEAGUE: [
+				'1st place — Rs. 15,000',
+				'2nd place — Rs. 10,000',
+				'3rd place — Rs. 8,000',
+			],
+			self.Page.GAMEWEEK_WINNERS: ['Every gameweek winner — Rs. 500'],
+			self.Page.MANAGER_OF_THE_MONTH: ['Every Manager of the Month — Rs. 1,000'],
+		}.get(self.page, [])
+
 	def save(self, *args, **kwargs):
 		# Renders capped at 64px tall in the banner - cap the source well
 		# above that for retina/wide layouts without shipping full-res photos.
