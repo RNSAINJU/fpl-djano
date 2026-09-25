@@ -5,6 +5,7 @@ from urllib import error, request
 from zoneinfo import ZoneInfo
 
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models import F, Max, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -1697,14 +1698,14 @@ def _form_for_gameweek_points(gameweek_points: int) -> tuple[str, str]:
 	On Fire (excellent/consistently high) > Hot (strong) > Steady
 	(average/consistent) > Cooling (recent drop) > Cold (poor/low points)."""
 	if gameweek_points >= 80:
-		return 'On Fire', 'ðŸ”¥'
+		return 'On Fire', '🔥'
 	if gameweek_points >= 65:
-		return 'Hot', 'ðŸŸ¢'
+		return 'Hot', '🟢'
 	if gameweek_points >= 50:
-		return 'Steady', 'ðŸŸ¡'
+		return 'Steady', '🟡'
 	if gameweek_points >= 35:
-		return 'Cooling', 'ðŸŸ '
-	return 'Cold', 'ðŸ”µ'
+		return 'Cooling', '🟠'
+	return 'Cold', '🔵'
 
 
 def _build_classic_data(rows: list[dict]) -> dict:
@@ -1957,6 +1958,11 @@ def _page_ad(page: str) -> PageAdvertisement | None:
 	return PageAdvertisement.objects.filter(page=page).first()
 
 
+class SeasonArchiveError(Exception):
+	"""The upstream data is not complete enough to create a permanent archive."""
+
+
+@transaction.atomic
 def _archive_current_season(season: Season, league_id: int = FPL_CLASSIC_LEAGUE_ID) -> dict:
 	"""Snapshots final standings, every gameweek/monthly winner, and the
 	season captain leaderboard into the given (already-created, empty)
@@ -1967,7 +1973,24 @@ def _archive_current_season(season: Season, league_id: int = FPL_CLASSIC_LEAGUE_
 	gameweeks start, so this is the one chance to freeze the numbers."""
 	summary = {'standings': 0, 'gameweek_winners': 0, 'monthly_winners': 0, 'captain_standings': 0}
 
-	rows, league_name, _league_error, _league_source = _resolved_league_dataset()
+	# Recompute standings and reject errors rather than archiving an empty fallback.
+	rows, league_name, league_error = _fetch_fpl_league_entries_live(league_id)
+	if league_error or not rows:
+		raise SeasonArchiveError('Final standings are unavailable. Please retry later.')
+	try:
+		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
+		events = bootstrap.get('events', [])
+		if not events or not all(event.get('finished') for event in events):
+			raise SeasonArchiveError('The season must be finished before archiving.')
+		gameweek_month_map = _gameweek_month_map(events)
+		finished_gameweeks = sorted(event['id'] for event in events)
+		if any(gw not in gameweek_month_map for gw in finished_gameweeks):
+			raise SeasonArchiveError('Gameweek deadlines are incomplete. Please retry later.')
+	except (error.HTTPError, error.URLError, ValueError, KeyError, TypeError, TimeoutError) as exc:
+		raise SeasonArchiveError('Season metadata is unavailable. Please retry later.') from exc
+	stored_gameweeks = set(CaptainGameweekScore.objects.values_list('gameweek', flat=True).distinct())
+	if set(finished_gameweeks) - stored_gameweeks:
+		raise SeasonArchiveError('Finished gameweek scores are missing. Run sync_fpl_data before archiving.')
 	if league_name and not season.league_name:
 		season.league_name = league_name
 		season.save(update_fields=['league_name'])
@@ -1985,11 +2008,12 @@ def _archive_current_season(season: Season, league_id: int = FPL_CLASSIC_LEAGUE_
 	SeasonStanding.objects.bulk_create(standings)
 	summary['standings'] = len(standings)
 
-	finished_gameweeks = sorted(CaptainGameweekScore.objects.values_list('gameweek', flat=True).distinct())
 	gameweek_winner_rows = []
 	for gameweek in finished_gameweeks:
 		gameweek_data = _fetch_gameweek_leaderboard_live(league_id, selected_gameweek=gameweek)
 		winner = gameweek_data.get('winner')
+		if gameweek_data.get('gameweek_error') or not winner:
+			raise SeasonArchiveError(f'Gameweek {gameweek} results are unavailable. Please retry later.')
 		if winner:
 			gameweek_winner_rows.append(
 				SeasonGameweekWinner(
@@ -2003,17 +2027,13 @@ def _archive_current_season(season: Season, league_id: int = FPL_CLASSIC_LEAGUE_
 	SeasonGameweekWinner.objects.bulk_create(gameweek_winner_rows)
 	summary['gameweek_winners'] = len(gameweek_winner_rows)
 
-	try:
-		bootstrap = _get_json('https://fantasy.premierleague.com/api/bootstrap-static/')
-		events = bootstrap.get('events', [])
-	except (error.HTTPError, error.URLError, ValueError, TimeoutError):
-		events = []
-	gameweek_month_map = _gameweek_month_map(events)
 	months = sorted({gameweek_month_map[gw] for gw in finished_gameweeks if gw in gameweek_month_map})
 	monthly_winner_rows = []
 	for month in months:
 		month_data = _fetch_monthly_leaderboard_live(league_id, selected_month=month)
 		winner = month_data.get('monthly_winner')
+		if month_data.get('monthly_error') or not winner:
+			raise SeasonArchiveError(f'Monthly results for {month} are unavailable. Please retry later.')
 		if winner:
 			monthly_winner_rows.append(
 				SeasonMonthlyWinner(
@@ -2027,7 +2047,9 @@ def _archive_current_season(season: Season, league_id: int = FPL_CLASSIC_LEAGUE_
 	SeasonMonthlyWinner.objects.bulk_create(monthly_winner_rows)
 	summary['monthly_winners'] = len(monthly_winner_rows)
 
-	captain_rows, _status_label, _captain_error = _fetch_captain_leaderboard_live(league_id)
+	captain_rows, _status_label, captain_error = _fetch_captain_leaderboard_live(league_id)
+	if captain_error or not captain_rows:
+		raise SeasonArchiveError('Captain standings are unavailable. Please retry later.')
 	captain_standing_rows = [
 		SeasonCaptainStanding(
 			season=season,
@@ -2147,7 +2169,7 @@ def captain_mode(request):
 		'captain_error': None,
 		'saved_message': None,
 		'captain_leaderboard': [],
-		'leaderboard_status': 'Loadingâ€¦',
+		'leaderboard_status': 'Loading…',
 		'leaderboard_error': None,
 		'league_name': '',
 		'page_ad': _page_ad(PageAdvertisement.Page.CAPTAIN_MODE),

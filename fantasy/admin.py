@@ -17,7 +17,7 @@ from .models import (
 	SeasonStanding,
 	SiteSettings,
 )
-from .views import _archive_current_season
+from .views import SeasonArchiveError, _archive_current_season
 
 
 class FantasyAdminSite(AdminSite):
@@ -223,6 +223,15 @@ class SeasonGameweekWinnerInline(admin.TabularInline):
 class SeasonAdmin(admin.ModelAdmin):
 	list_display = ('name', 'league_name', 'archived_at')
 	inlines = [SeasonStandingInline, SeasonCaptainStandingInline, SeasonMonthlyWinnerInline, SeasonGameweekWinnerInline]
+
+	def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+		try:
+			return super().changeform_view(request, object_id, form_url, extra_context)
+		except SeasonArchiveError as exc:
+			# Catch outside ModelAdmin's transaction so the new Season is rolled
+			# back too; an empty/partial archive must not look successful.
+			self.message_user(request, f'Archive not created: {exc}', level=messages.ERROR)
+			return redirect(request.path)
 
 	def get_fields(self, request, obj=None):
 		if obj is None:
