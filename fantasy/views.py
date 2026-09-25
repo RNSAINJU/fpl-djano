@@ -1777,7 +1777,7 @@ def _fetch_gameweek_history(
 	league's current (cached) roster rather than whatever was stored on
 	each CaptainGameweekScore row, so they stay in sync with the rest of
 	the site even after a manager renames their team mid-season."""
-	entry_rows, using_new_entries, _league_name = _fetch_league_roster(league_id)
+	entry_rows, using_new_entries, league_name = _fetch_league_roster(league_id)
 
 	managers: dict[int, dict] = {}
 	for item in entry_rows:
@@ -1832,6 +1832,7 @@ def _fetch_gameweek_history(
 		row['rank'] = 1 + sum(1 for other in history_rows if other['gameweek_points'] > row['gameweek_points'])
 
 	return {
+		'league_name': league_name,
 		'gameweek_history_ids': gameweek_ids,
 		'selected_gameweek': selected_gameweek,
 		'gameweek_history_rows': history_rows,

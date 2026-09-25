@@ -236,6 +236,7 @@ class GameweekHistoryTests(TestCase):
 
         self.assertEqual(data['gameweek_history_ids'], [1, 2])
         self.assertEqual(data['selected_gameweek'], 2)
+        self.assertEqual(data['league_name'], 'League')
         rows = {row['entry_id']: row for row in data['gameweek_history_rows']}
         self.assertEqual(rows[1]['gameweek_points'], 66)
         self.assertEqual(rows[1]['total_points'], 158)
