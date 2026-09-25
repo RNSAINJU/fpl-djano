@@ -1452,11 +1452,13 @@ def _fetch_gameweek_leaderboard_live(
 				'hits': 0,
 			}
 
-		# Cumulative total through the selected gameweek, from stored finished weeks.
+		# Stored scores are gross; deduct each week's hits once. Live scores
+		# below are already net, so exclude that week from this stored total.
 		cumulative = (
 			CaptainGameweekScore.objects.filter(entry_id__in=managers.keys(), gameweek__lte=selected_gameweek)
+			.exclude(gameweek=current_gameweek)
 			.values('entry_id')
-			.annotate(total=Sum('gameweek_points'))
+			.annotate(total=Sum(F('gameweek_points') - F('event_transfers_cost')))
 		)
 		for row in cumulative:
 			if row['entry_id'] in managers:
@@ -1490,7 +1492,7 @@ def _fetch_gameweek_leaderboard_live(
 			).values_list('entry_id', 'gameweek_points', 'event_transfers_cost')
 			for entry_id, points, hits in this_gw:
 				if entry_id in managers:
-					managers[entry_id]['gameweek_points'] = points
+					managers[entry_id]['gameweek_points'] = points - (hits or 0)
 					managers[entry_id]['hits'] = hits or 0
 
 		entries = list(managers.values())

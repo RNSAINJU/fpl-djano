@@ -131,3 +131,51 @@ class SettingsEnvironmentTests(SimpleTestCase):
     def test_development_debug_is_explicit(self):
         settings = self.load_settings({'DJANGO_SECRET_KEY': 'test-only-private-key', 'DJANGO_DEBUG': 'true'})
         self.assertTrue(settings['DEBUG'])
+
+
+class GameweekTransferHitTests(TestCase):
+    def setUp(self):
+        self.roster = [
+            {'entry': 1, 'player_name': 'Manager A', 'entry_name': 'Team A'},
+            {'entry': 2, 'player_name': 'Manager B', 'entry_name': 'Team B'},
+        ]
+        for entry, gw, points, hits in [(1, 1, 100, 8), (1, 2, 70, 4), (2, 2, 69, 0), (1, 3, 90, 4)]:
+            CaptainGameweekScore.objects.create(entry_id=entry, gameweek=gw,
+                gameweek_points=points, event_transfers_cost=hits)
+
+    def leaderboard(self, selected, live=False):
+        from .views import _fetch_gameweek_leaderboard_live
+        events = [{'id': gw, 'finished': not (live and gw == 2), 'is_current': gw == 2}
+                  for gw in (1, 2)]
+        def api(url):
+            if 'bootstrap-static' in url:
+                return {'events': events}
+            return {'picks': [{'element': 10, 'multiplier': 1}],
+                    'entry_history': {'event_transfers_cost': 4}}
+        with patch('fantasy.views._get_json', side_effect=api), \
+             patch('fantasy.views._fetch_league_entry_rows', return_value=(self.roster, False)), \
+             patch('fantasy.views._fetch_live_element_points', return_value={10: 70}):
+            return _fetch_gameweek_leaderboard_live(selected_gameweek=selected)
+
+    def test_finished_scores_and_ranking_deduct_hits(self):
+        data = self.leaderboard(2)
+        rows = {row['entry_id']: row for row in data['entries']}
+        self.assertIsNone(data['gameweek_error'])
+        self.assertEqual(rows[1]['gameweek_points'], 66)
+        self.assertEqual(rows[1]['total_points'], 158)
+        self.assertEqual(rows[1]['hits'], 4)
+        self.assertEqual(rows[2]['gameweek_points'], 69)
+        self.assertEqual(data['winner']['entry_id'], 2)
+
+    def test_historical_total_excludes_future_weeks(self):
+        data = self.leaderboard(1)
+        row = next(row for row in data['entries'] if row['entry_id'] == 1)
+        self.assertEqual(row['gameweek_points'], 92)
+        self.assertEqual(row['total_points'], 92)
+
+    def test_live_hits_are_deducted_once_and_stored_live_row_is_excluded(self):
+        data = self.leaderboard(2, live=True)
+        row = next(row for row in data['entries'] if row['entry_id'] == 1)
+        self.assertEqual(row['gameweek_points'], 66)
+        self.assertEqual(row['total_points'], 158)
+        self.assertEqual(row['hits'], 4)
