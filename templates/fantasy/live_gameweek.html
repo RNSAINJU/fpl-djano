@@ -64,13 +64,7 @@
                         <button type="submit">See my team</button>
                     </form>
 
-                    <details class="fpl-id-help">
-                        <summary>Where do I find my FPL ID?</summary>
-                        <div class="fpl-id-help__body">
-                            <p>Log in at <a href="https://fantasy.premierleague.com/" target="_blank" rel="noopener noreferrer">fantasy.premierleague.com</a>, open the <strong>Points</strong> tab, and copy the number in the address bar:</p>
-                            <code>&hellip;/entry/<strong>1234567</strong>/event/1</code>
-                        </div>
-                    </details>
+                    {% include 'fantasy/_fpl_id_help.html' %}
 
                     <p class="tracker-divider">or fetch a player history by player ID</p>
                     <form class="tracker-form" method="get" action="{% url 'fantasy:live_gameweek' %}">

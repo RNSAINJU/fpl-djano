@@ -290,3 +290,20 @@ class PrizePageTests(TestCase):
             self.assertContains(response, prize)
         self.assertContains(response, '2nd place — Rs. 10,000')
         self.assertContains(response, '3rd place — Rs. 8,000')
+
+
+class FplIdHelpTests(TestCase):
+    def test_dashboard_and_live_tracker_show_expandable_id_help(self):
+        with patch('fantasy.views._base_page_context', return_value={
+            'active_page': 'home',
+            'gameweek_name': 'Gameweek',
+            'deadline_display': '-',
+        }):
+            dashboard = self.client.get(reverse('fantasy:home'))
+        live_tracker = self.client.get(reverse('fantasy:live_gameweek'))
+
+        for response in (dashboard, live_tracker):
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, '<summary>Where do I find my FPL ID?</summary>', html=True)
+            self.assertContains(response, 'fantasy.premierleague.com')
+            self.assertContains(response, '1234567')
