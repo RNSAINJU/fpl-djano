@@ -2695,3 +2695,52 @@ td small {
 .about-contact dt { font-weight: 700; margin-bottom: 6px; }
 .about-contact dd { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
 .about-contact a { color: var(--brand); }
+
+/* Winner claim callout. */
+.card.prize-claim {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 26px;
+    padding: clamp(24px, 4vw, 42px);
+    background: radial-gradient(ellipse at top right, #64336a 0, transparent 65%), #29042f;
+    color: #fff;
+    border: 1px solid #693671;
+    box-shadow: 0 12px 32px rgba(55, 0, 60, .13);
+}
+.prize-claim__trophy {
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    flex: 0 0 76px;
+    border: 1px solid #a18250;
+    border-radius: 22px;
+    background: rgba(255, 216, 129, .09);
+    color: #ffdc8a;
+}
+.prize-claim__trophy svg { width: 48px; height: 48px; }
+.prize-claim__copy { flex: 1 1 280px; min-width: 0; }
+.prize-claim__eyebrow { color: #ffdc8a; text-transform: uppercase; font-size: 12px; font-weight: 700; letter-spacing: .14em; }
+.prize-claim__copy h3 { margin: 9px 0 12px; font-size: clamp(25px, 3vw, 36px); line-height: 1.15; color: #fff; }
+.prize-claim__copy p { max-width: 54ch; margin: 0; line-height: 1.65; color: #eee1f1; }
+.prize-claim__copy .prize-claim__hint { margin-top: 12px; font-size: 13px; color: #d9c7de; }
+.prize-claim__action { display: flex; flex-direction: column; gap: 12px; align-items: center; max-width: 100%; }
+a.prize-claim__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 17px 24px;
+    min-height: 52px;
+    border-radius: 12px;
+    background: var(--brand-bright);
+    color: #04231a;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 5px 20px rgba(0, 255, 135, .15);
+}
+a.prize-claim__button:hover { background: #75ffbd; }
+a.prize-claim__button:focus-visible { outline: 3px solid #fff; outline-offset: 5px; }
+.prize-claim__button svg { flex-shrink: 0; }
+.prize-claim__destination { font-size: 12px; color: #d9c7de; text-align: center; }

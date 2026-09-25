@@ -16,6 +16,7 @@
             <p class="nav-label">Main</p>
             <a class="{% if active_page == 'home' %}active{% endif %}" href="{% url 'fantasy:home' %}#dashboard">Dashboard</a>
             <a class="{% if active_page == 'prizes' %}active{% endif %}" href="{% url 'fantasy:prizes' %}">Prizes</a>
+            <a class="{% if active_page == 'about_us' %}active{% endif %}" href="{% url 'fantasy:about_us' %}">About Us</a>
             <p class="nav-label">FPL Bhaktapur</p>
             <a class="{% if active_page == 'live_gameweek' %}active{% endif %}" href="{% url 'fantasy:live_gameweek' %}">Live Tracker</a>
             <a class="{% if active_page == 'captain_mode' %}active{% endif %}" href="{% url 'fantasy:captain_mode' %}">Captain Mode</a>
@@ -24,7 +25,6 @@
             <a class="{% if active_page == 'manager_of_the_month' %}active{% endif %}" href="{% url 'fantasy:manager_of_the_month' %}">Manager of the Month</a>
             <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:gameweekhistory' %}">Gameweek History</a>
             <a class="{% if active_page == 'past_seasons' %}active{% endif %}" href="{% url 'fantasy:past_seasons' %}">Past Seasons</a>
-            <a class="{% if active_page == 'about_us' %}active{% endif %}" href="{% url 'fantasy:about_us' %}">About Us</a>
         </nav>
     </aside>
 
@@ -53,9 +53,23 @@
                 <img src="{% static 'fantasy/img/prizes.jpg' %}" alt="FPL Bhaktapur game modes and money prizes" style="width: 100%; height: auto; border-radius: 12px; display: block;">
             </section>
 
-            <section class="card reveal" aria-labelledby="claim-prize-title">
-                <h3 id="claim-prize-title">Claim your prize</h3>
-                <p>To claim, DM <a href="https://www.facebook.com/fplbhaktapur/" target="_blank" rel="noopener noreferrer">FPL Bhaktapur official page</a>.</p>
+            <section class="card reveal prize-claim" aria-labelledby="claim-prize-title">
+                <div class="prize-claim__trophy" aria-hidden="true">
+                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h18v12a9 9 0 0 1-18 0V8Z"/><path d="M15 12H8v5a8 8 0 0 0 8 8m17-13h7v5a8 8 0 0 1-8 8M24 29v9m-8 3h16m-13-3h10"/><path d="m24 12 1.5 3 3.5.5-2.5 2.5.6 3.5-3.1-1.6-3.1 1.6.6-3.5-2.5-2.5 3.5-.5L24 12Z" stroke-width="1.5"/></svg>
+                </div>
+                <div class="prize-claim__copy">
+                    <span class="prize-claim__eyebrow">Calling all winners</span>
+                    <h3 id="claim-prize-title">You won. Let's celebrate!</h3>
+                    <p>Your prize is the next step. DM the FPL Bhaktapur official Facebook page to claim it.</p>
+                    <p class="prize-claim__hint">Include your team name and the prize you won.</p>
+                </div>
+                <div class="prize-claim__action">
+                    <a class="prize-claim__button" href="https://www.facebook.com/fplbhaktapur/" target="_blank" rel="noopener noreferrer">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg>
+                        DM us to claim <span aria-hidden="true">&rarr;</span>
+                    </a>
+                    <span class="prize-claim__destination">Opens our official Facebook page</span>
+                </div>
             </section>
 
             {% if advertisements %}
