@@ -1,3 +1,11 @@
+// Escape API values at HTML text and quoted-attribute boundaries.
+// Dynamic values must stay out of inline JavaScript handlers.
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
+}
+
 // Shared onerror handler for player headshots, used from inline `onerror`
 // attributes (so it has to live on window). Not every player has a photo
 // uploaded on the FPL CDN yet (recent transfers/lesser-known players 403) -
@@ -23,14 +31,14 @@ window.handlePlayerPhotoError = function handlePlayerPhotoError(img, shirtUrl) {
 // each section rebuilding it slightly differently.
 window.buildPlayerAvatar = function buildPlayerAvatar(name, photoUrl, shirtUrl, className) {
     const initial = (name || '-').slice(0, 1);
-    const fallback = `<span class="${className} ${className}--fallback" style="display:none;">${initial}</span>`;
+    const fallback = `<span class="${escapeHtml(className)} ${escapeHtml(className)}--fallback" style="display:none;">${escapeHtml(initial)}</span>`;
     if (photoUrl) {
-        return `<img class="${className}" src="${photoUrl}" alt="${name}" onerror="window.handlePlayerPhotoError(this, '${shirtUrl || ''}')">${fallback}`;
+        return `<img class="${escapeHtml(className)}" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(name)}" data-shirt-url="${escapeHtml(shirtUrl || '')}" onerror="window.handlePlayerPhotoError(this, this.dataset.shirtUrl)">${fallback}`;
     }
     if (shirtUrl) {
-        return `<img class="${className} is-shirt-fallback" src="${shirtUrl}" alt="${name}" onerror="window.handlePlayerPhotoError(this, '')">${fallback}`;
+        return `<img class="${escapeHtml(className)} is-shirt-fallback" src="${escapeHtml(shirtUrl)}" alt="${escapeHtml(name)}" onerror="window.handlePlayerPhotoError(this, '')">${fallback}`;
     }
-    return `<span class="${className} ${className}--fallback">${initial}</span>`;
+    return `<span class="${escapeHtml(className)} ${escapeHtml(className)}--fallback">${escapeHtml(initial)}</span>`;
 };
 
 // Shared Live Fixtures card markup - the dashboard's default (current
@@ -46,19 +54,19 @@ window.renderLiveFixturesGrid = function renderLiveFixturesGrid(grid, fixtures) 
             <article class="live-fixture-card">
                 <div class="fixture-teams">
                     <div class="fixture-team">
-                        ${fixture.home_team.shirt_url ? `<img class="fixture-team__shirt" src="${fixture.home_team.shirt_url}" alt="${fixture.home_team.short_name} shirt" loading="lazy">` : ''}
-                        <strong>${fixture.home_team.short_name}</strong>
+                        ${fixture.home_team.shirt_url ? `<img class="fixture-team__shirt" src="${escapeHtml(fixture.home_team.shirt_url)}" alt="${escapeHtml(fixture.home_team.short_name)} shirt" loading="lazy">` : ''}
+                        <strong>${escapeHtml(fixture.home_team.short_name)}</strong>
                     </div>
                     <span>vs</span>
                     <div class="fixture-team">
-                        ${fixture.away_team.shirt_url ? `<img class="fixture-team__shirt" src="${fixture.away_team.shirt_url}" alt="${fixture.away_team.short_name} shirt" loading="lazy">` : ''}
-                        <strong>${fixture.away_team.short_name}</strong>
+                        ${fixture.away_team.shirt_url ? `<img class="fixture-team__shirt" src="${escapeHtml(fixture.away_team.shirt_url)}" alt="${escapeHtml(fixture.away_team.short_name)} shirt" loading="lazy">` : ''}
+                        <strong>${escapeHtml(fixture.away_team.short_name)}</strong>
                     </div>
                 </div>
-                <div class="fixture-status${fixture.status === 'LIVE' ? ' fixture-status--live' : ''}">${fixture.status}</div>
+                <div class="fixture-status${fixture.status === 'LIVE' ? ' fixture-status--live' : ''}">${escapeHtml(fixture.status)}</div>
                 ${fixture.status === 'Upcoming'
-                    ? `<p>${fixture.kickoff_display}</p>`
-                    : `<p class="fixture-score">${fixture.home_score || 0} - ${fixture.away_score || 0}</p>`}
+                    ? `<p>${escapeHtml(fixture.kickoff_display)}</p>`
+                    : `<p class="fixture-score">${escapeHtml(fixture.home_score || 0)} - ${escapeHtml(fixture.away_score || 0)}</p>`}
             </article>
         `)
         .join('');
@@ -245,11 +253,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     return `
                         <tr>
-                            <td>#${row.rank}</td>
+                            <td>#${escapeHtml(row.rank)}</td>
 
-                            <td>${row.manager_name || '-'}</td>
+                            <td>${escapeHtml(row.manager_name || '-')}</td>
 
-                            <td>${row.team_name || '-'}</td>
+                            <td>${escapeHtml(row.team_name || '-')}</td>
 
                             <td>
                                 ${Number(row.hits || 0) > 0
@@ -258,12 +266,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             </td>
 
                             <td>
-                                ${row.total_points || 0}
+                                ${escapeHtml(row.total_points || 0)}
                             </td>
 
                             <td>
                                 <span class="status-pill ${formClass}">
-                                    ${row.form_emoji || ''} ${row.form || 'Cold'}
+                                    ${escapeHtml(row.form_emoji || '')} ${escapeHtml(row.form || 'Cold')}
                                 </span>
                             </td>
                         </tr>
@@ -320,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (select && data.available_gameweeks && data.available_gameweeks.length) {
                 const current = select.value || String(data.selected_gameweek || '');
                 select.innerHTML = data.available_gameweeks
-                    .map((gw) => `<option value="${gw.value}"${String(gw.value) === current ? ' selected' : ''}>${gw.label}</option>`)
+                    .map((gw) => `<option value="${escapeHtml(gw.value)}"${String(gw.value) === current ? ' selected' : ''}>${escapeHtml(gw.label)}</option>`)
                     .join('');
             }
 
@@ -348,12 +356,12 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = rows
                 .map((row) => `
                     <tr>
-                        <td>#${row.rank}</td>
-                        <td>${row.manager_name}</td>
-                        <td>${row.team_name}</td>
-                        <td>${row.hits ? `-${row.hits}` : '0'}</td>
-                        <td>${row.gameweek_points}</td>
-                        <td>${row.total_points}</td>
+                        <td>#${escapeHtml(row.rank)}</td>
+                        <td>${escapeHtml(row.manager_name)}</td>
+                        <td>${escapeHtml(row.team_name)}</td>
+                        <td>${row.hits ? `-${escapeHtml(row.hits)}` : '0'}</td>
+                        <td>${escapeHtml(row.gameweek_points)}</td>
+                        <td>${escapeHtml(row.total_points)}</td>
                     </tr>
                 `)
                 .join('');
@@ -400,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (select && data.available_months && data.available_months.length) {
                 const current = select.value || data.selected_month || '';
                 select.innerHTML = data.available_months
-                    .map((month) => `<option value="${month.value}"${month.value === current ? ' selected' : ''}>${month.label}</option>`)
+                    .map((month) => `<option value="${escapeHtml(month.value)}"${month.value === current ? ' selected' : ''}>${escapeHtml(month.label)}</option>`)
                     .join('');
             }
 
@@ -429,11 +437,11 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = rows
                 .map((row) => `
                     <tr>
-                        <td>#${row.rank}</td>
-                        <td>${row.manager_name}</td>
-                        <td>${row.team_name}</td>
-                        <td>${row.monthly_hits ? `-${row.monthly_hits}` : '0'}</td>
-                        <td>${row.monthly_points}</td>
+                        <td>#${escapeHtml(row.rank)}</td>
+                        <td>${escapeHtml(row.manager_name)}</td>
+                        <td>${escapeHtml(row.team_name)}</td>
+                        <td>${row.monthly_hits ? `-${escapeHtml(row.monthly_hits)}` : '0'}</td>
+                        <td>${escapeHtml(row.monthly_points)}</td>
                     </tr>
                 `)
                 .join('');
@@ -475,11 +483,11 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = rows
                 .map((row) => `
                     <tr>
-                        <td>#${row.rank}</td>
-                        <td>${row.manager_name}</td>
-                        <td>${row.team_name}</td>
-                        <td>${row.captain_name}</td>
-                        <td>${row.captain_points}</td>
+                        <td>#${escapeHtml(row.rank)}</td>
+                        <td>${escapeHtml(row.manager_name)}</td>
+                        <td>${escapeHtml(row.team_name)}</td>
+                        <td>${escapeHtml(row.captain_name)}</td>
+                        <td>${escapeHtml(row.captain_points)}</td>
                     </tr>
                 `)
                 .join('');
@@ -500,9 +508,9 @@ document.addEventListener('DOMContentLoaded', () => {
             list.innerHTML = topRows
                 .map((row) => `
                     <li${row.rank === 1 ? ' class="mini-leaders__item--first"' : ''}>
-                        <span class="mini-leaders__rank">${medalFor(row.rank)}</span>
-                        <span class="mini-leaders__name">${row.manager_name}</span>
-                        <span class="mini-leaders__score">${row[scoreKey]}</span>
+                        <span class="mini-leaders__rank">${escapeHtml(medalFor(row.rank))}</span>
+                        <span class="mini-leaders__name">${escapeHtml(row.manager_name)}</span>
+                        <span class="mini-leaders__score">${escapeHtml(row[scoreKey])}</span>
                     </li>
                 `)
                 .join('');
@@ -514,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             if (!stat) {
-                container.innerHTML = `<div class="stat-spotlight__text"><p class="stat-spotlight__value">-<span class="stat-spotlight__unit">${unitLabel}</span></p><p class="stat-name">No data</p><p class="stat-team"></p></div><div class="stat-spotlight__media"><div class="player-fallback">-</div></div>`;
+                container.innerHTML = `<div class="stat-spotlight__text"><p class="stat-spotlight__value">-<span class="stat-spotlight__unit">${escapeHtml(unitLabel)}</span></p><p class="stat-name">No data</p><p class="stat-team"></p></div><div class="stat-spotlight__media"><div class="player-fallback">-</div></div>`;
                 return;
             }
             // Not every player has a photo uploaded on the FPL CDN (it 403s
@@ -523,11 +531,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const initial = (stat.name || '-').slice(0, 1);
             const shirtUrl = stat.shirt_url || '';
             const media = stat.photo_url
-                ? `<img src="${stat.photo_url}" alt="${stat.name}" onerror="window.handlePlayerPhotoError(this, '${shirtUrl}')"><div class="player-fallback" style="display:none;">${initial}</div>`
+                ? `<img src="${escapeHtml(stat.photo_url)}" alt="${escapeHtml(stat.name)}" data-shirt-url="${escapeHtml(shirtUrl)}" onerror="window.handlePlayerPhotoError(this, this.dataset.shirtUrl)"><div class="player-fallback" style="display:none;">${escapeHtml(initial)}</div>`
                 : shirtUrl
-                    ? `<img src="${shirtUrl}" alt="${stat.name}" class="is-shirt-fallback" onerror="window.handlePlayerPhotoError(this, '')"><div class="player-fallback" style="display:none;">${initial}</div>`
-                    : `<div class="player-fallback">${initial}</div>`;
-            container.innerHTML = `<div class="stat-spotlight__text"><p class="stat-spotlight__value">${stat[valueKey] || 0}<span class="stat-spotlight__unit">${unitLabel}</span></p><p class="stat-name">${stat.name}</p><p class="stat-team">${stat.team_name || ''}</p></div><div class="stat-spotlight__media">${media}</div>`;
+                    ? `<img src="${escapeHtml(shirtUrl)}" alt="${escapeHtml(stat.name)}" class="is-shirt-fallback" onerror="window.handlePlayerPhotoError(this, '')"><div class="player-fallback" style="display:none;">${escapeHtml(initial)}</div>`
+                    : `<div class="player-fallback">${escapeHtml(initial)}</div>`;
+            container.innerHTML = `<div class="stat-spotlight__text"><p class="stat-spotlight__value">${escapeHtml(stat[valueKey] || 0)}<span class="stat-spotlight__unit">${escapeHtml(unitLabel)}</span></p><p class="stat-name">${escapeHtml(stat.name)}</p><p class="stat-team">${escapeHtml(stat.team_name || '')}</p></div><div class="stat-spotlight__media">${media}</div>`;
         };
 
         const renderHome = (payload) => {
@@ -599,14 +607,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         .map(
                             (player) => `
                             <div class="owned-card">
-                                <span class="owned-card__rank">#${player.rank}</span>
+                                <span class="owned-card__rank">#${escapeHtml(player.rank)}</span>
                                 <div class="owned-card__media">${window.buildPlayerAvatar(player.name, player.photo_url, player.shirt_url, 'owned-card__photo')}</div>
                                 <div class="owned-card__text">
-                                    <strong>${player.name}</strong>
-                                    <span>${player.team_short_name}</span>
+                                    <strong>${escapeHtml(player.name)}</strong>
+                                    <span>${escapeHtml(player.team_short_name)}</span>
                                 </div>
                                 <div class="owned-card__percent">
-                                    <strong>${player.selected_by_percent}%</strong>
+                                    <strong>${escapeHtml(player.selected_by_percent)}%</strong>
                                     <span>Selected</span>
                                 </div>
                             </div>
@@ -632,10 +640,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             return `
                             <div class="pick-card">
                                 <div class="pick-card__media">${window.buildPlayerAvatar(player.name, player.photo_url, player.shirt_url, 'pick-card__photo')}</div>
-                                <span class="pick-card__points">${player.expected_points} pts</span>
-                                <strong class="pick-card__name">${player.name}</strong>
-                                <span class="pick-card__meta">${player.position_label} &middot; ${player.team_short_name} &middot; &pound;${player.price}m</span>
-                                <span class="pick-card__fixture">${fixtureLabel}</span>
+                                <span class="pick-card__points">${escapeHtml(player.expected_points)} pts</span>
+                                <strong class="pick-card__name">${escapeHtml(player.name)}</strong>
+                                <span class="pick-card__meta">${escapeHtml(player.position_label)} &middot; ${escapeHtml(player.team_short_name)} &middot; &pound;${escapeHtml(player.price)}m</span>
+                                <span class="pick-card__fixture">${escapeHtml(fixtureLabel)}</span>
                             </div>
                         `;
                         })
@@ -657,8 +665,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             (player) => `
                             <div class="totw-player">
                                 ${window.buildPlayerAvatar(player.name, player.photo_url, player.shirt_url, 'totw-player__photo')}
-                                <span class="totw-player__name">${player.name}</span>
-                                <span class="totw-player__points">${player.points} pts</span>
+                                <span class="totw-player__name">${escapeHtml(player.name)}</span>
+                                <span class="totw-player__points">${escapeHtml(player.points)} pts</span>
                             </div>
                         `
                         )
@@ -676,8 +684,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <li class="injury-item">
                                 ${window.buildPlayerAvatar(player.name, player.photo_url, player.shirt_url, 'injury-item__photo')}
                                 <div>
-                                    <p><strong>${player.name}</strong> <span class="status-pill status-pill--${player.status_code || 'u'}">${player.status_label}</span></p>
-                                    <small>${player.news}</small>
+                                    <p><strong>${escapeHtml(player.name)}</strong> <span class="status-pill status-pill--${escapeHtml(player.status_code || 'u')}">${escapeHtml(player.status_label)}</span></p>
+                                    <small>${escapeHtml(player.news)}</small>
                                 </div>
                             </li>
                         `
@@ -694,10 +702,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         .map((fixture) => `
                             <li>
                                 <div>
-                                    <p>${fixture.home_team.short_name} vs ${fixture.away_team.short_name}</p>
-                                    <small>${fixture.kickoff_display}</small>
+                                    <p>${escapeHtml(fixture.home_team.short_name)} vs ${escapeHtml(fixture.away_team.short_name)}</p>
+                                    <small>${escapeHtml(fixture.kickoff_display)}</small>
                                 </div>
-                                <span class="difficulty difficulty-${fixture.difficulty}">D${fixture.difficulty}</span>
+                                <span class="difficulty difficulty-${escapeHtml(fixture.difficulty)}">D${escapeHtml(fixture.difficulty)}</span>
                             </li>
                         `)
                         .join('')
@@ -796,7 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 achievementsBox.innerHTML = titles.length
                     ? '<p class="chip-history__label">League Achievements</p><div class="chip-history__list">'
                         + titles
-                            .map((title) => `<span class="chip-history__item chip-history__item--title">🏆 ${title.label} <small>${title.detail}</small></span>`)
+                            .map((title) => `<span class="chip-history__item chip-history__item--title">🏆 ${escapeHtml(title.label)} <small>${escapeHtml(title.detail)}</small></span>`)
                             .join('')
                         + '</div>'
                     : '<p class="chip-history__label">League Achievements</p><p class="chip-history__empty">No titles won yet this season.</p>';
@@ -805,17 +813,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const positionItems = [];
                 if (positions && positions.classic_rank) {
                     positionItems.push(
-                        `<span class="chip-history__item">Classic League #${positions.classic_rank} <small>of ${positions.classic_total_entries} &middot; ${positions.classic_points} pts</small></span>`
+                        `<span class="chip-history__item">Classic League #${escapeHtml(positions.classic_rank)} <small>of ${escapeHtml(positions.classic_total_entries)} &middot; ${escapeHtml(positions.classic_points)} pts</small></span>`
                     );
                 }
                 if (positions && positions.captain_rank) {
                     positionItems.push(
-                        `<span class="chip-history__item">Captain Mode #${positions.captain_rank} <small>of ${positions.captain_total_entries} &middot; ${positions.captain_points} pts</small></span>`
+                        `<span class="chip-history__item">Captain Mode #${escapeHtml(positions.captain_rank)} <small>of ${escapeHtml(positions.captain_total_entries)} &middot; ${escapeHtml(positions.captain_points)} pts</small></span>`
                     );
                 }
                 if (positions && positions.monthly_rank) {
                     positionItems.push(
-                        `<span class="chip-history__item">${positions.monthly_label} #${positions.monthly_rank} <small>of ${positions.monthly_total_entries} &middot; ${positions.monthly_points} pts</small></span>`
+                        `<span class="chip-history__item">${escapeHtml(positions.monthly_label)} #${escapeHtml(positions.monthly_rank)} <small>of ${escapeHtml(positions.monthly_total_entries)} &middot; ${escapeHtml(positions.monthly_points)} pts</small></span>`
                     );
                 }
                 if (positionItems.length) {

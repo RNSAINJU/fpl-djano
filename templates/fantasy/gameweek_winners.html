@@ -108,7 +108,7 @@
                                 <td>#{{ entry.rank }}</td>
                                 <td>{{ entry.manager_name }}</td>
                                 <td>{{ entry.team_name }}</td>
-                                <td>{{ entry.hits }}</td>
+                                <td>{% if entry.hits %}-{{ entry.hits }}{% else %}0{% endif %}</td>
                                 <td>{{ entry.gameweek_points }}</td>
                                 <td>{{ entry.total_points }}</td>
                             </tr>

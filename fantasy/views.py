@@ -1448,6 +1448,7 @@ def _fetch_gameweek_leaderboard_live(
 				'team_name': row.get('entry_name', 'Unknown Team'),
 				'gameweek_points': 0,
 				'total_points': 0,
+				'hits': 0,
 			}
 
 		# Cumulative total through the selected gameweek, from stored finished weeks.
@@ -1463,12 +1464,13 @@ def _fetch_gameweek_leaderboard_live(
 		if selected_gameweek == current_gameweek:
 			live_points_by_player = _fetch_live_element_points(current_gameweek)
 
-			def fetch_one(entry_id: int) -> tuple[int, int] | None:
+			def fetch_one(entry_id: int) -> tuple[int, int, int] | None:
 				try:
 					picks_payload = _get_json(
 						f'https://fantasy.premierleague.com/api/entry/{entry_id}/event/{current_gameweek}/picks/'
 					)
-					return entry_id, _live_net_gameweek_points(picks_payload, live_points_by_player)
+					return (entry_id, _live_net_gameweek_points(picks_payload, live_points_by_player),
+						picks_payload.get('entry_history', {}).get('event_transfers_cost', 0) or 0)
 				except (error.HTTPError, error.URLError, ValueError, TimeoutError):
 					return None
 
@@ -1477,16 +1479,18 @@ def _fetch_gameweek_leaderboard_live(
 				for future in as_completed(futures):
 					result = future.result()
 					if result:
-						entry_id, points = result
+						entry_id, points, hits = result
 						managers[entry_id]['gameweek_points'] = points
+						managers[entry_id]['hits'] = hits
 						managers[entry_id]['total_points'] += points
 		else:
 			this_gw = CaptainGameweekScore.objects.filter(
 				entry_id__in=managers.keys(), gameweek=selected_gameweek
-			).values_list('entry_id', 'gameweek_points')
-			for entry_id, points in this_gw:
+			).values_list('entry_id', 'gameweek_points', 'event_transfers_cost')
+			for entry_id, points, hits in this_gw:
 				if entry_id in managers:
 					managers[entry_id]['gameweek_points'] = points
+					managers[entry_id]['hits'] = hits or 0
 
 		entries = list(managers.values())
 		entries.sort(key=lambda row: row['gameweek_points'], reverse=True)
@@ -1693,14 +1697,14 @@ def _form_for_gameweek_points(gameweek_points: int) -> tuple[str, str]:
 	On Fire (excellent/consistently high) > Hot (strong) > Steady
 	(average/consistent) > Cooling (recent drop) > Cold (poor/low points)."""
 	if gameweek_points >= 80:
-		return 'On Fire', '🔥'
+		return 'On Fire', 'ðŸ”¥'
 	if gameweek_points >= 65:
-		return 'Hot', '🟢'
+		return 'Hot', 'ðŸŸ¢'
 	if gameweek_points >= 50:
-		return 'Steady', '🟡'
+		return 'Steady', 'ðŸŸ¡'
 	if gameweek_points >= 35:
-		return 'Cooling', '🟠'
-	return 'Cold', '🔵'
+		return 'Cooling', 'ðŸŸ '
+	return 'Cold', 'ðŸ”µ'
 
 
 def _build_classic_data(rows: list[dict]) -> dict:
@@ -2143,7 +2147,7 @@ def captain_mode(request):
 		'captain_error': None,
 		'saved_message': None,
 		'captain_leaderboard': [],
-		'leaderboard_status': 'Loading…',
+		'leaderboard_status': 'Loadingâ€¦',
 		'leaderboard_error': None,
 		'league_name': '',
 		'page_ad': _page_ad(PageAdvertisement.Page.CAPTAIN_MODE),
