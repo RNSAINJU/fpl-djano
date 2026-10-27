@@ -1,0 +1,17 @@
+[Unit]
+Description=Sync and verify FPL Bhaktapur data
+Wants=network-online.target
+After=network-online.target
+OnFailure=fpl_django_sync_failure.service
+
+[Service]
+Type=oneshot
+User=rnsainju
+Group=rnsainju
+WorkingDirectory=/home/rnsainju/fpl_django
+EnvironmentFile=/etc/fpl_django.env
+UMask=0027
+TimeoutStartSec=10min
+ExecStart=/home/rnsainju/fpl_django/.venv/bin/python manage.py sync_fpl_data
+ExecStart=/home/rnsainju/fpl_django/.venv/bin/python manage.py check_fpl_sync_health
+

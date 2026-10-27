@@ -266,6 +266,7 @@ class Command(BaseCommand):
         # Fetch each needed gameweek's live points once and share it across
         # every manager, rather than re-fetching per manager.
         live_points_by_gw = {}
+        failed_live_gameweeks = set()
         for gameweek in sorted({item[3] for item in to_fetch}):
             try:
                 payload = _get_json(f'https://fantasy.premierleague.com/api/event/{gameweek}/live/')
@@ -274,7 +275,12 @@ class Command(BaseCommand):
                 }
             except (error.HTTPError, error.URLError, ValueError, TimeoutError) as exc:
                 self.stdout.write(self.style.WARNING(f'Could not fetch live points for GW{gameweek}: {exc}'))
-                live_points_by_gw[gameweek] = {}
+                failed_live_gameweeks.add(gameweek)
+
+        # Do not persist plausible-looking zero captain scores when the live
+        # endpoint is unavailable. Leaving the rows absent makes the next
+        # timer run retry them and lets the health check report the gap.
+        to_fetch = [item for item in to_fetch if item[3] not in failed_live_gameweeks]
 
         def fetch_one(item):
             entry_id, manager_name, team_name, gameweek = item
@@ -295,15 +301,24 @@ class Command(BaseCommand):
                     multiplier = captain_pick.get('multiplier') or 2
                     captain_points = live_points_by_gw.get(gameweek, {}).get(element_id, 0) * multiplier
                     captain_name = player_name_lookup.get(element_id, 'Unknown')
-            except (error.HTTPError, error.URLError, ValueError, TimeoutError):
-                pass
-            return entry_id, manager_name, team_name, gameweek, captain_name, captain_points, gameweek_points, event_transfers_cost
+            except (error.HTTPError, error.URLError, ValueError, TimeoutError) as exc:
+                return None, f'entry {entry_id}, GW{gameweek}: {exc}'
+            return (
+                (entry_id, manager_name, team_name, gameweek, captain_name, captain_points,
+                 gameweek_points, event_transfers_cost),
+                None,
+            )
 
         saved = 0
+        failures = [f'live points unavailable for GW{gameweek}' for gameweek in sorted(failed_live_gameweeks)]
         with ThreadPoolExecutor(max_workers=15) as executor:
             futures = [executor.submit(fetch_one, item) for item in to_fetch]
             for future in as_completed(futures):
-                entry_id, manager_name, team_name, gameweek, captain_name, captain_points, gameweek_points, event_transfers_cost = future.result()
+                row, failure = future.result()
+                if failure:
+                    failures.append(failure)
+                    continue
+                entry_id, manager_name, team_name, gameweek, captain_name, captain_points, gameweek_points, event_transfers_cost = row
                 CaptainGameweekScore.objects.update_or_create(
                     entry_id=entry_id,
                     gameweek=gameweek,
@@ -319,3 +334,11 @@ class Command(BaseCommand):
                 saved += 1
 
         self.stdout.write(f'Captain scores backfilled: {saved} manager x gameweek rows across GW{finished_gameweeks}')
+        if failures:
+            preview = '; '.join(failures[:5])
+            if len(failures) > 5:
+                preview += f'; and {len(failures) - 5} more'
+            raise CommandError(
+                f'Captain score sync incomplete ({len(failures)} upstream failure(s)); '
+                f'missing rows were left retryable. {preview}'
+            )

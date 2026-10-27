@@ -1,0 +1,7 @@
+[Unit]
+Description=Report an FPL Bhaktapur data sync failure
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/logger -p daemon.err -t fpl-django-sync FPL sync or health check failed - inspect fpl_django_sync.service in the system journal
+

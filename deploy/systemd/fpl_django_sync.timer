@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the FPL Bhaktapur data sync every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=30
+AccuracySec=1min
+Unit=fpl_django_sync.service
+
+[Install]
+WantedBy=timers.target
+

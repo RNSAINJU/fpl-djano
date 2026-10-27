@@ -1,0 +1,11 @@
+/home/rnsainju/fpl_django/sync_fpl_data.log {
+    daily
+    size 5M
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su rnsainju rnsainju
+}
