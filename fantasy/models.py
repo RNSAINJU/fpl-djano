@@ -1,8 +1,23 @@
 import os
 from io import BytesIO
 
+import bleach
 from django.core.files.base import ContentFile
 from django.db import models
+
+
+ADMIN_HTML_TAGS = {'p', 'br', 'strong', 'b', 'em', 'i', 'ul', 'ol', 'li', 'a'}
+ADMIN_HTML_ATTRIBUTES = {'a': ['href', 'title']}
+
+
+def _sanitize_admin_html(value):
+	return bleach.clean(
+		value or '',
+		tags=ADMIN_HTML_TAGS,
+		attributes=ADMIN_HTML_ATTRIBUTES,
+		protocols={'http', 'https', 'mailto'},
+		strip=True,
+	)
 
 
 def _shrink_image(image_field, max_dimension):
@@ -121,6 +136,7 @@ class Fixture(models.Model):
 
 
 class LeagueEntry(models.Model):
+	entry_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
 	manager_name = models.CharField(max_length=100)
 	team_name = models.CharField(max_length=100)
 	total_points = models.PositiveIntegerField(default=0)
@@ -212,6 +228,12 @@ class SiteSettings(models.Model):
 
 	def save(self, *args, **kwargs):
 		self.pk = 1
+		for field_name in (
+			'captain_leaderboard_note',
+			'captain_recommendation_note',
+			'monthly_winner_note',
+		):
+			setattr(self, field_name, _sanitize_admin_html(getattr(self, field_name)))
 		# Renders as a small ~40px mark everywhere it's used - cap well above
 		# that for retina screens without shipping a multi-megapixel photo.
 		_shrink_image(self.logo, max_dimension=200)

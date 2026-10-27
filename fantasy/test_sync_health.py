@@ -97,3 +97,28 @@ class FplSyncRetryTests(TestCase):
                 self.command._sync_captain_scores(self.bootstrap, 6232)
 
         self.assertFalse(CaptainGameweekScore.objects.exists())
+
+    @patch('fantasy.management.commands.sync_fpl_data._get_json')
+    def test_partial_league_pagination_does_not_replace_stored_standings(self, get_json):
+        existing = LeagueEntry.objects.create(
+            entry_id=99,
+            manager_name='Existing',
+            team_name='Existing Team',
+            total_points=100,
+            gameweek_points=50,
+            rank=1,
+        )
+        get_json.side_effect = [
+            {
+                'standings': {
+                    'results': [{'entry': 10, 'player_name': 'Partial', 'entry_name': 'Partial Team'}],
+                    'has_next': True,
+                },
+            },
+            URLError('page two unavailable'),
+        ]
+
+        with self.assertRaisesMessage(CommandError, 'Could not fetch complete standings data'):
+            self.command._sync_league(6232)
+
+        self.assertEqual(list(LeagueEntry.objects.values_list('pk', flat=True)), [existing.pk])

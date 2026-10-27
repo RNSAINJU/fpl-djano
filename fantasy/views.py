@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from .models import (
 	CaptainGameweekScore,
+	LeagueEntry,
 	PageAdvertisement,
 	Season,
 	SeasonCaptainStanding,
@@ -23,6 +24,7 @@ from .models import (
 )
 
 FPL_CLASSIC_LEAGUE_ID = 6232
+FPL_CLASSIC_LEAGUE_NAME = 'FPL Bhaktapur S8'
 
 # The FPL API's own internal chip codes, mapped to their display names.
 CHIP_LABELS = {
@@ -922,6 +924,20 @@ def _fetch_league_roster(league_id: int) -> tuple[list[dict], bool, str]:
 	clear) re-walked FPL's paginated standings endpoint 4 separate times
 	in a row for identical data - measured at ~14s just for that
 	redundant part, before any per-page work even started."""
+	stored_entries = list(LeagueEntry.objects.order_by('rank'))
+	if stored_entries and all(entry.entry_id for entry in stored_entries):
+		return ([
+			{
+				'entry': entry.entry_id,
+				'player_name': entry.manager_name,
+				'entry_name': entry.team_name,
+				'total': entry.total_points,
+				'event_total': entry.gameweek_points,
+				'rank': entry.rank,
+			}
+			for entry in stored_entries
+		], False, FPL_CLASSIC_LEAGUE_NAME)
+
 	return cache.get_or_set(
 		f'fpl:league_roster:{league_id}',
 		lambda: _fetch_league_roster_live(league_id),
@@ -1348,6 +1364,31 @@ def _is_season_finished_live() -> bool:
 
 
 def _resolved_league_dataset() -> tuple[list[dict], str, str | None, str]:
+	stored_entries = list(LeagueEntry.objects.order_by('rank'))
+	if stored_entries:
+		entry_ids = [entry.entry_id for entry in stored_entries if entry.entry_id]
+		hits_by_entry = {
+			row['entry_id']: row['hits'] or 0
+			for row in (
+				CaptainGameweekScore.objects.filter(entry_id__in=entry_ids)
+				.values('entry_id')
+				.annotate(hits=Sum('event_transfers_cost'))
+			)
+		}
+		rows = [
+			{
+				'entry_id': entry.entry_id,
+				'manager_name': entry.manager_name,
+				'team_name': entry.team_name,
+				'total_points': entry.total_points,
+				'gameweek_points': entry.gameweek_points,
+				'hits': hits_by_entry.get(entry.entry_id, 0),
+				'rank': entry.rank,
+			}
+			for entry in stored_entries
+		]
+		return rows, FPL_CLASSIC_LEAGUE_NAME, None, 'synced'
+
 	live_rows, league_name, live_error = _fetch_fpl_league_entries()
 	if live_rows:
 		return live_rows, league_name, live_error, 'live'
@@ -2313,6 +2354,22 @@ def league_live_data(request):
 	page asked was pure waste. Omit `section` (or 'all') to get everything,
 	which the dashboard needs since it shows a slice of all four."""
 	section = request.GET.get('section', '').strip() or 'all'
+
+	# These endpoints have no dependency on the mini-league standings. Return
+	# them before resolving the league dataset so a cold cache does not trigger
+	# an unrelated paginated league fetch and per-manager API fan-out.
+	if section == 'achievements':
+		entry_id_param = request.GET.get('entry_id', '').strip()
+		achievements = _fetch_manager_achievements(int(entry_id_param)) if entry_id_param.isdigit() else None
+		return JsonResponse({'achievements': achievements})
+
+	if section == 'live_fixtures':
+		try:
+			gameweek_param = int(request.GET.get('gameweek', '').strip())
+		except (TypeError, ValueError):
+			gameweek_param = 1
+		return JsonResponse({'live_fixtures_page': _fetch_gameweek_fixtures_page(gameweek_param)})
+
 	rows, league_name, league_error, league_source = _resolved_league_dataset()
 
 	response = {
@@ -2364,25 +2421,6 @@ def league_live_data(request):
 	if section in ('dashboard', 'all'):
 		dashboard_data = _fetch_dashboard_data()
 		response['dashboard'] = dashboard_data
-
-	# Deliberately not part of 'all' - this is a single manager's own
-	# lookup (Live Tracker), not something every page's slice needs, and
-	# computing 3 leaderboards' worth of live data was blocking that
-	# page's render for 15-20s+ (occasionally long enough to hit the
-	# gunicorn worker timeout outright) when fetched synchronously. Now
-	# fetched by the page itself after the rest of it has already loaded.
-	if section == 'achievements':
-		entry_id_param = request.GET.get('entry_id', '').strip()
-		response['achievements'] = _fetch_manager_achievements(int(entry_id_param)) if entry_id_param.isdigit() else None
-
-	# The dashboard's Live Fixtures pager - browse any gameweek's fixtures,
-	# not just the current one the page loads with.
-	if section == 'live_fixtures':
-		try:
-			gameweek_param = int(request.GET.get('gameweek', '').strip())
-		except (TypeError, ValueError):
-			gameweek_param = 1
-		response['live_fixtures_page'] = _fetch_gameweek_fixtures_page(gameweek_param)
 
 	return JsonResponse(response)
 

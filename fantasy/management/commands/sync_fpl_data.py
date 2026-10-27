@@ -164,8 +164,9 @@ class Command(BaseCommand):
             try:
                 payload = _get_json(url)
             except (error.HTTPError, error.URLError, TimeoutError, ValueError) as exc:
-                self.stdout.write(self.style.WARNING(f'Stopped paginating {result_key} at page {page}: {exc}'))
-                break
+                raise CommandError(
+                    f'Could not fetch complete {result_key} data (page {page} failed): {exc}'
+                ) from exc
             section = payload.get(result_key, {})
             rows.extend(section.get('results', []))
             if not section.get('has_next'):
@@ -188,6 +189,7 @@ class Command(BaseCommand):
         if not using_new_entries:
             entries = [
                 LeagueEntry(
+                    entry_id=item.get('entry'),
                     manager_name=(item.get('player_name', '').strip() or 'Unknown Manager'),
                     team_name=item.get('entry_name', 'Unknown Team'),
                     total_points=item.get('total', 0),
@@ -199,6 +201,7 @@ class Command(BaseCommand):
         else:
             entries = [
                 LeagueEntry(
+                    entry_id=item.get('entry'),
                     manager_name=(
                         f"{item.get('player_first_name', '')} {item.get('player_last_name', '')}".strip()
                         or 'New Manager'
