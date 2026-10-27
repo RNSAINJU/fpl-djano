@@ -8,6 +8,7 @@ db.sqlite3
 db.sqlite3.bak-*
 .env
 *.log
+*.log.*
 *.bak-*
 .django_cache/
 media/
